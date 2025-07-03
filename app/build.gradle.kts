@@ -54,10 +54,14 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation(libs.androidx.navigation.common.android)
+    implementation(libs.androidx.navigation.compose.android)
 
-    
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
+// WebView is part of Android SDK; Compose interop is handled by androidx.compose.ui:ui already included.

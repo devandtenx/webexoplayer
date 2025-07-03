@@ -64,6 +64,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.foundation.lazy.itemsIndexed
+import android.content.Intent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,7 +89,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         // 1. App Bar at the very top
                         TopAppBarCustom(
-                            welcomeText = "Welcome Mr. Ansari Salim",
+                            welcomeText = "Welcome Mr. Ajul K Jose",
                             room = "Room 101"
                         )
                         // 2. Row with two cards (welcome message and ad)
@@ -113,7 +114,6 @@ class MainActivity : ComponentActivity() {
                                         .padding(20.dp)
                                 ) {
                                     // Logo
-                                    
                                     Text(
                                         text = "Dear Guest,\n\nWe glad to welcome you and are always focused on achieving excellence through our service. For any assistance, please contact the reception and we will be happy to help. You may review us online or drop your comments in the suggestion box placed at the reception. Thank you for allowing us the pleasure of being your hosts. Have stay is a memorable one.\n\nYour Sincerely,\nGeneral Manager",
                                         style = MaterialTheme.typography.bodyLarge,
@@ -154,7 +154,16 @@ class MainActivity : ComponentActivity() {
                         }
                         Spacer(modifier = Modifier.weight(1f))
                         // 3. Bottom Menu Row
-                        TVMenuRow()
+                        TVMenuRow(onMenuSelected = { _, label ->
+                            if (label == "YOUTUBE") {
+                                val intent = Intent(this@MainActivity, YouTubeActivity::class.java)
+                                startActivity(intent)
+                            } else {
+                                val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)
+                                intent.putExtra("label", label)
+                                startActivity(intent)
+                            }
+                        })
                     }
                 }
             }
@@ -202,7 +211,7 @@ fun MenuButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVec
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun TVMenuRow() {
+fun TVMenuRow(onMenuSelected: (Int, String) -> Unit) {
     var selectedIndex by remember { mutableStateOf(0) }
     val menuOptions = listOf(
         MenuOption("TV", Icons.Filled.Tv),
@@ -241,6 +250,10 @@ fun TVMenuRow() {
                             selectedIndex = (selectedIndex - 1 + menuOptions.size) % menuOptions.size
                             true
                         }
+                        Key.Enter, Key.NumPadEnter -> {
+                            onMenuSelected(selectedIndex, menuOptions[selectedIndex].label)
+                            true
+                        }
                         else -> false
                     }
                 } else {
@@ -254,7 +267,7 @@ fun TVMenuRow() {
                 label = option.label,
                 icon = option.icon,
                 selected = index == selectedIndex,
-                onClick = { selectedIndex = index }
+                onClick = { onMenuSelected(index, option.label) }
             )
         }
     }

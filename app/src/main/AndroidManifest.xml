@@ -28,6 +28,8 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name="com.itsthe1.webexoplayer.MenuDetailActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.YouTubeActivity" />
     </application>
 
 </manifest>

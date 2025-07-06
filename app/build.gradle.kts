@@ -56,7 +56,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation(libs.androidx.navigation.common.android)
     implementation(libs.androidx.navigation.compose.android)
-
+    implementation("androidx.compose.runtime:runtime-saveable")
+    implementation(libs.tv.material)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)

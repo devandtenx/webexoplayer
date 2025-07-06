@@ -17,11 +17,16 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
 
 @Composable
 fun TopAppBarCustom(
     welcomeText: String,
-    room: String
+    room: String,
+    onResetRoom: (() -> Unit)? = null
 ) {
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     val dateFormatter = remember { SimpleDateFormat("dd  EEEE, MMMM", Locale.getDefault()) }
@@ -100,20 +105,38 @@ fun TopAppBarCustom(
                 fontSize = 22.sp,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp)
             )
-            // Right: Time and Date
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = currentTime,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-                Text(
-                    text = currentDate,
-                    color = Color.White,
-                    fontSize = 16.sp
-                )
+            // Right: Time, Date, and Reset button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Reset button (only show if callback is provided)
+                onResetRoom?.let { resetCallback ->
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = "Reset Room Number",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable { resetCallback() }
+                    )
+                }
+                
+                // Time and Date
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = currentTime,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = currentDate,
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+                }
             }
         }
     }

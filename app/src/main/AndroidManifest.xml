@@ -19,7 +19,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WebExoPlayer">
         <activity
-            android:name=".MainActivity"
+            android:name=".RoomSelectionActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -28,6 +28,7 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MainActivity" />
         <activity android:name="com.itsthe1.webexoplayer.MenuDetailActivity" />
         <activity android:name="com.itsthe1.webexoplayer.YouTubeActivity" />
     </application>

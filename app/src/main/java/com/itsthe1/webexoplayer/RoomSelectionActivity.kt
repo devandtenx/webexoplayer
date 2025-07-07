@@ -50,70 +50,138 @@ class RoomSelectionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Check if room number is already stored
-        if (RoomManager.hasRoomNumber(this)) {
-            // Room number already exists, navigate to MainActivity
-            val intent = Intent(this@RoomSelectionActivity, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-            return
-        }
-        
-        setContent {
-            WebExoPlayerTheme {
-                RoomSelectionScreen(
-                    onRoomSelected = { roomNumber, deviceId, macAddress ->
-                        // Save room number locally
-                        RoomManager.saveRoomNumber(this@RoomSelectionActivity, roomNumber)
-
-                        // Call API to save device info
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            val call = RetrofitClient.instance.addDevice(
-                                deviceName = macAddress, // or any name you want
-                                deviceId = deviceId,
-                                macAddress = macAddress, // you can get MAC address if needed
-                                roomId = roomNumber,
-                                deviceStatus=1,
-                                deviceOs="Android",
-                                deviceType="Android TV",
-                                deviceAccessKey=" ",
-                                devicePrivateKey=" ",
-                                appId=5,
-                            )
-                            call.enqueue(object : Callback<ApiResponse> {
-                                override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
-                                    // Handle success
-                                    if (response.isSuccessful && response.body()?.success == true) {
-                                        // Navigate to MainActivity
-                                        val intent = Intent(this@RoomSelectionActivity, MainActivity::class.java)
-                                        startActivity(intent)
-                                        finish()
-                                    } else {
-                                        // Show error message
-                                        runOnUiThread {
-                                            android.widget.Toast.makeText(
-                                                applicationContext,
-                                                response.body()?.message ?: "Failed to register device. Please try again.",
-                                                android.widget.Toast.LENGTH_LONG
-                                            ).show()
+        // Always try to lookup by device ID, do not check or save room number locally
+        val androidId = android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: ""
+        val context = this
+        val macAddress = getMacAddress(context)
+        lifecycleScope.launch(Dispatchers.IO) {
+            val call = RetrofitClient.instance.lookupDeviceById(androidId)
+            call.enqueue(object : Callback<ApiResponse> {
+                override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
+                    val deviceRoomId = response.body()?.device?.room_id
+                    if (response.isSuccessful && response.body()?.success == true && !deviceRoomId.isNullOrBlank()) {
+                        // Store room_id in SharedPreferences
+                        DeviceManager.saveDeviceInfo(context,response.body()?.device)
+                        // Use room_id from device object
+                        val intent = Intent(context, MainActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        // Show room selection UI as fallback
+                        runOnUiThread {
+                            setContent {
+                                WebExoPlayerTheme {
+                                    RoomSelectionScreen(
+                                        onRoomSelected = { roomNumber, deviceId, macAddress ->
+                                            // Call API to save device info
+                                            lifecycleScope.launch(Dispatchers.IO) {
+                                                val call = RetrofitClient.instance.addDevice(
+                                                    deviceName = macAddress, // or any name you want
+                                                    deviceId = deviceId,
+                                                    macAddress = macAddress, // you can get MAC address if needed
+                                                    roomId = roomNumber,
+                                                    deviceStatus=1,
+                                                    deviceOs="Android",
+                                                    deviceType="Android TV",
+                                                    deviceAccessKey=" ",
+                                                    devicePrivateKey=" ",
+                                                    appId=5,
+                                                )
+                                                call.enqueue(object : Callback<ApiResponse> {
+                                                    override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
+                                                        // Handle success
+                                                        if (response.isSuccessful && response.body()?.success == true) {
+                                                            val intent = Intent(context, MainActivity::class.java)
+                                                            startActivity(intent)
+                                                            finish()
+                                                        } else {
+                                                            // Show error message
+                                                            runOnUiThread {
+                                                                android.widget.Toast.makeText(
+                                                                    applicationContext,
+                                                                    response.body()?.message ?: "Failed to register device. Please try again.",
+                                                                    android.widget.Toast.LENGTH_LONG
+                                                                ).show()
+                                                            }
+                                                        }
+                                                    }
+                                                    override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
+                                                        // Show error message
+                                                        runOnUiThread {
+                                                            android.widget.Toast.makeText(
+                                                                applicationContext,
+                                                                "Network error: ${t.localizedMessage ?: t.message ?: "Unknown error"}",
+                                                                android.widget.Toast.LENGTH_LONG
+                                                            ).show()
+                                                        }
+                                                    }
+                                                })
+                                            }
                                         }
-                                    }
+                                    )
                                 }
-                                override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
-                                    // Show error message
-                                    runOnUiThread {
-                                        android.widget.Toast.makeText(
-                                            applicationContext,
-                                            "Network error: ${t.localizedMessage ?: t.message ?: "Unknown error"}",
-                                            android.widget.Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }
-                            })
+                            }
                         }
                     }
-                )
-            }
+                }
+                override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
+                    // Show room selection UI as fallback
+                    runOnUiThread {
+                        setContent {
+                            WebExoPlayerTheme {
+                                RoomSelectionScreen(
+                                    onRoomSelected = { roomNumber, deviceId, macAddress ->
+                                        // Call API to save device info
+                                        lifecycleScope.launch(Dispatchers.IO) {
+                                            val call = RetrofitClient.instance.addDevice(
+                                                deviceName = macAddress, // or any name you want
+                                                deviceId = deviceId,
+                                                macAddress = macAddress, // you can get MAC address if needed
+                                                roomId = roomNumber,
+                                                deviceStatus=1,
+                                                deviceOs="Android",
+                                                deviceType="Android TV",
+                                                deviceAccessKey=" ",
+                                                devicePrivateKey=" ",
+                                                appId=5,
+                                            )
+                                            call.enqueue(object : Callback<ApiResponse> {
+                                                override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
+                                                    // Handle success
+                                                    if (response.isSuccessful && response.body()?.success == true) {
+                                                        val intent = Intent(context, MainActivity::class.java)
+                                                        startActivity(intent)
+                                                        finish()
+                                                    } else {
+                                                        // Show error message
+                                                        runOnUiThread {
+                                                            android.widget.Toast.makeText(
+                                                                applicationContext,
+                                                                response.body()?.message ?: "Failed to register device. Please try again.",
+                                                                android.widget.Toast.LENGTH_LONG
+                                                            ).show()
+                                                        }
+                                                    }
+                                                }
+                                                override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
+                                                    // Show error message
+                                                    runOnUiThread {
+                                                        android.widget.Toast.makeText(
+                                                            applicationContext,
+                                                            "Network error: ${t.localizedMessage ?: t.message ?: "Unknown error"}",
+                                                            android.widget.Toast.LENGTH_LONG
+                                                        ).show()
+                                                    }
+                                                }
+                                            })
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            })
         }
     }
 }

@@ -58,16 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Check if room number is stored
-        val roomNumber = RoomManager.getRoomNumber(this)
-        
-        if (roomNumber == null) {
-            // No room number stored, navigate to room selection
-            val intent = Intent(this@MainActivity, RoomSelectionActivity::class.java)
-            startActivity(intent)
-            finish()
-            return
-        }
+
         
         setContent {
             WebExoPlayerTheme {
@@ -91,17 +82,7 @@ class MainActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             // 1. App Bar at the very top
-                            TopAppBarCustom(
-                                welcomeText = "Welcome Mr. Ajul K Jose",
-                                room = "Room $roomNumber",
-                                onResetRoom = {
-                                    // Clear room number and restart app
-                                    RoomManager.clearRoomNumber(this@MainActivity)
-                                    val intent = Intent(this@MainActivity, RoomSelectionActivity::class.java)
-                                    startActivity(intent)
-                                    finish()
-                                }
-                            )
+                            TopAppBarCustom()
                             // 2. Row with two cards (welcome message and ad)
                             Row(
                                 modifier = Modifier

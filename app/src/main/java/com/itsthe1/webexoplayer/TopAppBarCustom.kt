@@ -21,13 +21,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
-fun TopAppBarCustom(
-    welcomeText: String,
-    room: String,
-    onResetRoom: (() -> Unit)? = null
-) {
+fun TopAppBarCustom() {
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     val dateFormatter = remember { SimpleDateFormat("dd  EEEE, MMMM", Locale.getDefault()) }
     var currentTime by remember { mutableStateOf(timeFormatter.format(Date())) }
@@ -88,7 +85,7 @@ fun TopAppBarCustom(
                     .padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = welcomeText,
+                    text = DeviceManager.getGuestFullName(LocalContext.current) ?: "",
                     color = Color.White,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
@@ -99,7 +96,7 @@ fun TopAppBarCustom(
             }
             // Room number to the right of welcome message
             Text(
-                text = room,
+                text = DeviceManager.getRoomNumber(LocalContext.current) ?: "",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
@@ -110,17 +107,6 @@ fun TopAppBarCustom(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Reset button (only show if callback is provided)
-                onResetRoom?.let { resetCallback ->
-                    Icon(
-                        imageVector = Icons.Filled.Refresh,
-                        contentDescription = "Reset Room Number",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clickable { resetCallback() }
-                    )
-                }
                 
                 // Time and Date
                 Column(horizontalAlignment = Alignment.End) {

@@ -20,4 +20,10 @@ interface ApiService {
         @Field("device_private_key") devicePrivateKey: String,
         @Field("app_id") appId: Int,
     ): Call<ApiResponse>
+
+    @FormUrlEncoded
+    @POST("index.php/android/device_data/lookupdevice")
+    fun lookupDeviceById(
+        @Field("device_id") deviceId: String
+    ): Call<ApiResponse>
 }

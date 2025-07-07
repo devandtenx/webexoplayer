@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -17,7 +18,8 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.WebExoPlayer">
+        android:theme="@style/Theme.WebExoPlayer"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".RoomSelectionActivity"
             android:exported="true">

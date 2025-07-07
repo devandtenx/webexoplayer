@@ -36,6 +36,17 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "META-INF/io.netty.versions.properties"
+            excludes += "META-INF/DEPENDENCIES.txt"
+            excludes += "META-INF/DEPENDENCIES.txt.asc"
+            excludes += "META-INF/DEPENDENCIES.txt.sha1"
+        }
+    }
 }
 
 dependencies {
@@ -58,11 +69,19 @@ dependencies {
     implementation(libs.androidx.navigation.compose.android)
     implementation("androidx.compose.runtime:runtime-saveable")
     implementation(libs.tv.material)
+    
+    // Retrofit for HTTP networking
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation(libs.firebase.appdistribution.gradle)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
 
 // WebView is part of Android SDK; Compose interop is handled by androidx.compose.ui:ui already included.

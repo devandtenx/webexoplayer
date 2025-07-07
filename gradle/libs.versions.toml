@@ -12,6 +12,7 @@ material3Android = "1.3.2"
 navigationCommonAndroid = "2.9.0"
 navigationComposeAndroid = "2.9.0"
 tvMaterialVersion = "1.0.0"
+firebaseAppdistributionGradle = "5.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +32,7 @@ androidx-material3-android = { group = "androidx.compose.material3", name = "mat
 androidx-navigation-common-android = { group = "androidx.navigation", name = "navigation-common-android", version.ref = "navigationCommonAndroid" }
 androidx-navigation-compose-android = { group = "androidx.navigation", name = "navigation-compose-android", version.ref = "navigationComposeAndroid" }
 tv-material = { group = "androidx.tv", name = "tv-material", version.ref = "tvMaterialVersion" }
+firebase-appdistribution-gradle = { group = "com.google.firebase", name = "firebase-appdistribution-gradle", version.ref = "firebaseAppdistributionGradle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

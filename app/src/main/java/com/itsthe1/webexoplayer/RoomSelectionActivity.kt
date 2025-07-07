@@ -3,13 +3,11 @@ package com.itsthe1.webexoplayer
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
 import android.provider.Settings.Secure
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -32,6 +29,22 @@ import com.itsthe1.webexoplayer.ui.theme.WebExoPlayerTheme
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.lifecycle.lifecycleScope
+import com.itsthe1.webexoplayer.api.RetrofitClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import com.itsthe1.webexoplayer.api.ApiResponse
+import android.net.wifi.WifiManager
+import android.content.Context
+
+fun getMacAddress(context: Context): String {
+    val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    val wifiInfo = wifiManager.connectionInfo
+    return wifiInfo.macAddress ?: "Unavailable"
+}
 
 class RoomSelectionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,14 +62,55 @@ class RoomSelectionActivity : ComponentActivity() {
         setContent {
             WebExoPlayerTheme {
                 RoomSelectionScreen(
-                    onRoomSelected = { roomNumber ->
-                        // Save room number using RoomManager
+                    onRoomSelected = { roomNumber, deviceId, macAddress ->
+                        // Save room number locally
                         RoomManager.saveRoomNumber(this@RoomSelectionActivity, roomNumber)
-                        
-                        // Navigate to MainActivity
-                        val intent = Intent(this@RoomSelectionActivity, MainActivity::class.java)
-                        startActivity(intent)
-                        finish()
+
+                        // Call API to save device info
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val call = RetrofitClient.instance.addDevice(
+                                deviceName = macAddress, // or any name you want
+                                deviceId = deviceId,
+                                macAddress = macAddress, // you can get MAC address if needed
+                                roomId = roomNumber,
+                                deviceStatus=1,
+                                deviceOs="Android",
+                                deviceType="Android TV",
+                                deviceAccessKey=" ",
+                                devicePrivateKey=" ",
+                                appId=5,
+                            )
+                            call.enqueue(object : Callback<ApiResponse> {
+                                override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
+                                    // Handle success
+                                    if (response.isSuccessful && response.body()?.success == true) {
+                                        // Navigate to MainActivity
+                                        val intent = Intent(this@RoomSelectionActivity, MainActivity::class.java)
+                                        startActivity(intent)
+                                        finish()
+                                    } else {
+                                        // Show error message
+                                        runOnUiThread {
+                                            android.widget.Toast.makeText(
+                                                applicationContext,
+                                                response.body()?.message ?: "Failed to register device. Please try again.",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                }
+                                override fun onFailure(call: Call<ApiResponse>, t: Throwable) {
+                                    // Show error message
+                                    runOnUiThread {
+                                        android.widget.Toast.makeText(
+                                            applicationContext,
+                                            "Network error: ${t.localizedMessage ?: t.message ?: "Unknown error"}",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            })
+                        }
                     }
                 )
             }
@@ -67,7 +121,7 @@ class RoomSelectionActivity : ComponentActivity() {
 @SuppressLint("HardwareIds")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoomSelectionScreen(onRoomSelected: (String) -> Unit) {
+fun RoomSelectionScreen(onRoomSelected: (String, String, String) -> Unit) {
     var roomNumber by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var isPressed by remember { mutableStateOf(false) }
@@ -77,9 +131,10 @@ fun RoomSelectionScreen(onRoomSelected: (String) -> Unit) {
     // Get Android device ID
     val context = androidx.compose.ui.platform.LocalContext.current
     val androidId = remember {
-        val id = Secure.getString(context.contentResolver, Secure.ANDROID_ID)
-        android.util.Log.d("RoomSelection", "Android ID: $id")
-        id
+        Secure.getString(context.contentResolver, Secure.ANDROID_ID) ?: ""
+    }
+    val macAddress = remember {
+        getMacAddress(context)
     }
     val displayId = when {
         androidId.isNullOrBlank() -> "Unavailable on emulator"
@@ -220,8 +275,8 @@ fun RoomSelectionScreen(onRoomSelected: (String) -> Unit) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Device ID: $displayId",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 12.sp,
+                        color = Color.White,
+                        fontSize = 14.sp,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -235,7 +290,7 @@ fun RoomSelectionScreen(onRoomSelected: (String) -> Unit) {
                         onClick = {
                             if (roomNumber.isNotBlank()) {
                                 isPressed = true
-                                onRoomSelected(roomNumber)
+                                onRoomSelected(roomNumber, androidId, macAddress)
                             } else {
                                 isError = true
                                 isPressed = false

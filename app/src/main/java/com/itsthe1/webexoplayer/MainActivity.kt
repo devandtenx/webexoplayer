@@ -57,6 +57,9 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+
+        
         setContent {
             WebExoPlayerTheme {
                 TvSurface(
@@ -79,10 +82,7 @@ class MainActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             // 1. App Bar at the very top
-                            TopAppBarCustom(
-                                welcomeText = "Welcome Mr. Ajul K Jose",
-                                room = "Room 101"
-                            )
+                            TopAppBarCustom()
                             // 2. Row with two cards (welcome message and ad)
                             Row(
                                 modifier = Modifier
@@ -145,16 +145,19 @@ class MainActivity : ComponentActivity() {
                             }
                             Spacer(modifier = Modifier.weight(1f))
                             // 3. Bottom Menu Row
-                            TVMenuRow(onMenuSelected = { _, label ->
-                                if (label == "YOUTUBE") {
-                                    val intent = Intent(this@MainActivity, YouTubeActivity::class.java)
-                                    startActivity(intent)
-                                } else {
-                                    val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)
-                                    intent.putExtra("label", label)
-                                    startActivity(intent)
-                                }
-                            })
+                            TVMenuRow(
+                                onMenuSelected = { _, label ->
+                                    if (label == "YOUTUBE") {
+                                        val intent = Intent(this@MainActivity, YouTubeActivity::class.java)
+                                        startActivity(intent)
+                                    } else {
+                                        val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)
+                                        intent.putExtra("label", label)
+                                        startActivity(intent)
+                                    }
+                                },
+                                initialSelectedIndex = 0
+                            )
                         }
                     }
                 }
@@ -208,7 +211,12 @@ fun MenuButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVec
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun TVMenuRow(onMenuSelected: (Int, String) -> Unit) {
+fun TVMenuRow(
+    onMenuSelected: (Int, String) -> Unit,
+    initialSelectedIndex: Int = 0
+) {
+    var selectedIndex by remember { mutableStateOf(initialSelectedIndex) }
+    
     val menuOptions = listOf(
         MenuOption("TV", Icons.Filled.Tv),
         MenuOption("SPECIAL OFFERS", Icons.Filled.LocalOffer),
@@ -230,8 +238,11 @@ fun TVMenuRow(onMenuSelected: (Int, String) -> Unit) {
             MenuButton(
                 label = option.label,
                 icon = option.icon,
-                selected = false,
-                onClick = { onMenuSelected(index, option.label) }
+                selected = index == selectedIndex,
+                onClick = { 
+                    selectedIndex = index
+                    onMenuSelected(index, option.label) 
+                }
             )
         }
     }

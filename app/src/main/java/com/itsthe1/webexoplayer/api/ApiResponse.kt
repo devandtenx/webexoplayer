@@ -23,7 +23,10 @@ data class DeviceInfo(
     val guest_id: Int?,
     val room_id: String?,
     val room_number: String?,
-    val guest: GuestInfo?
+    val guest: GuestInfo?,
+    val greeting: GreetingInfo?,
+    val channel: List<ChannelInfo>?
+    
 )
 
 data class GuestInfo(
@@ -38,5 +41,27 @@ data class GuestInfo(
     val greeting_id: String?,
     val language_id: String?,
     val hotel_id: String?
+
+)
+data class GreetingInfo(
+    val greeting_id: Int?,
+    val greeting_text: String?,
+    val language_id: String?,
+    val hotel_id: String?
+)
+
+data class ChannelInfo(
+    val channel_id: Int?,
+    val channel_name: String?,
+    val channel_trans_name: String?,
+    val channel_icon: String?,
+    val channel_cover: String?,
+    val channel_intro: String?,
+    val channel_trailer: String?,
+    val channel_src: String?,
+    val channel_number: String?,
+    val channel_status: String?,
+    val channel_type_id : String?,
+    val hotel_id  : String?,
 
 )

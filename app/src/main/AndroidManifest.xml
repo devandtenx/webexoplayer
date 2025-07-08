@@ -33,6 +33,8 @@
         <activity android:name=".MainActivity" />
         <activity android:name="com.itsthe1.webexoplayer.MenuDetailActivity" />
         <activity android:name="com.itsthe1.webexoplayer.YouTubeActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.TVActivity" />
+        
     </application>
 
 </manifest>

@@ -38,6 +38,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.itsthe1.webexoplayer.ui.theme.WebExoPlayerTheme
+import androidx.compose.foundation.clickable
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
+import com.itsthe1.webexoplayer.api.ChannelInfo
+import kotlinx.coroutines.delay
+import androidx.compose.animation.fadeIn
+import androidx.compose.runtime.key
 
 // Data class for channel (local UI model)
 data class Channel(
@@ -47,7 +67,7 @@ data class Channel(
 )
 
 // Extension function to convert ChannelInfo to Channel
-fun com.itsthe1.webexoplayer.api.ChannelInfo.toChannel(): Channel {
+fun ChannelInfo.toChannel(): Channel {
     val baseUrl = "http://192.168.56.1/admin-portal/assets/uploads/Channels/Channel/"
     val iconUrl = if (!channel_icon.isNullOrBlank()) baseUrl + channel_icon else null
     return Channel(
@@ -75,23 +95,43 @@ class TVActivity : ComponentActivity() {
                             .map { it.toChannel() }
                             .sortedBy { it.number }
                     }
+                    val navController = rememberNavController()
                     
-                    if (channels.isNotEmpty()) {
-                        Column {
-                            TopAppBarCustom()
-                            
-                            ChannelGrid(channels)
+                    NavHost(navController = navController, startDestination = "channelGrid?selectedIndex={selectedIndex}") {
+                        composable(
+                            "channelGrid?selectedIndex={selectedIndex}",
+                            arguments = listOf(
+                                navArgument("selectedIndex") {
+                                    type = NavType.IntType
+                                    defaultValue = 0
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val selectedIndex = backStackEntry.arguments?.getInt("selectedIndex") ?: 0
+                            if (channels.isNotEmpty()) {
+                                Column {
+                                    TopAppBarCustom()
+                                    ChannelGrid(channels, navController, selectedIndex)
+                                }
+                            } else {
+                                EmptyChannelsState()
+                                LaunchedEffect(Unit) {
+                                    Toast.makeText(
+                                        this@TVActivity,
+                                        "No channels available",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
                         }
-                    } else {
-                        // Show empty state when no channels are available
-                        EmptyChannelsState()
-                        // Show toast message
-                        LaunchedEffect(Unit) {
-                            Toast.makeText(
-                                this@TVActivity,
-                                "No channels available",
-                                Toast.LENGTH_LONG
-                            ).show()
+                        composable(
+                            "detail/{index}",
+                            arguments = listOf(
+                                navArgument("index") { type = NavType.IntType }
+                            )
+                        ) { backStackEntry ->
+                            val index = backStackEntry.arguments?.getInt("index") ?: 0
+                            ChannelDetailScreen(index = index, navController = navController)
                         }
                     }
                 }
@@ -103,8 +143,13 @@ class TVActivity : ComponentActivity() {
 }
 
 @Composable
-fun ChannelGrid(channelList: List<Channel>) {
+fun ChannelGrid(channelList: List<Channel>, navController: NavController, selectedIndex: Int = 0) {
     val focusRequesters = remember { List(channelList.size) { FocusRequester() } }
+    LaunchedEffect(selectedIndex) {
+        if (channelList.isNotEmpty()) {
+            focusRequesters[selectedIndex.coerceIn(channelList.indices)].requestFocus()
+        }
+    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier
@@ -126,6 +171,9 @@ fun ChannelGrid(channelList: List<Channel>) {
                         MoveDirection.UP -> if (index - 3 >= 0) index - 3 else null
                     }
                     nextIndex?.let { focusRequesters[it].requestFocus() }
+                },
+                onClick = {
+                    navController.navigate("detail/$index")
                 }
             )
         }
@@ -139,7 +187,8 @@ enum class MoveDirection { RIGHT, LEFT, DOWN, UP }
 fun ChannelCard(
     channel: Channel,
     focusRequester: FocusRequester,
-    onMoveFocus: (MoveDirection) -> Unit
+    onMoveFocus: (MoveDirection) -> Unit,
+    onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -166,7 +215,8 @@ fun ChannelCard(
             .border(2.dp, borderColor, shape = RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .fillMaxWidth()
-            .height(64.dp),
+            .height(64.dp)
+            .clickable { onClick() },
         contentAlignment = Alignment.CenterStart
     ) {
         Row(
@@ -232,6 +282,101 @@ fun EmptyChannelsState() {
                 color = Color(0xFFBDC3C7),
                 fontSize = 16.sp
             )
+        }
+    }
+}
+
+@Composable
+fun ChannelDetailScreen(index: Int, navController: NavController) {
+    val context = LocalContext.current
+    val channelList = remember {
+        DeviceManager.getAllChannels(context).map { it.toChannel() }.sortedBy { it.number }
+    }
+    println("Channel list size: ${channelList.size}")
+    var currentIndex by remember { mutableStateOf(index) }
+    val channel = channelList.getOrNull(currentIndex)
+    var visible by remember { mutableStateOf(true) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    // Show overlay for 2 seconds, and show again when channel changes
+    LaunchedEffect(currentIndex) {
+        visible = true
+        delay(2000)
+        visible = false
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF2C3E50))
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.DirectionRight -> {
+                            println("Right key pressed")
+                            currentIndex = if (currentIndex + 1 < channelList.size) {
+                                currentIndex + 1
+                            } else {
+                                0 // Loop to first channel
+                            }
+                            true
+                        }
+                        Key.DirectionLeft -> {
+                            println("Left key pressed")
+                            currentIndex = if (currentIndex - 1 >= 0) {
+                                currentIndex - 1
+                            } else {
+                                channelList.lastIndex // Loop to last channel
+                            }
+                            true
+                        }
+                        Key.Back -> {
+                            // Navigate back and pass the selected index
+                            navController.popBackStack()
+                            navController.navigate("channelGrid?selectedIndex=$currentIndex")
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            }
+    ) {
+        channel?.let {
+            println("Showing overlay for channel: ${it.number} - ${it.name}")
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                key(currentIndex) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(24.dp)
+                            .background(Color(0xCC222222), shape = RoundedCornerShape(12.dp))
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                    ) {
+                        Text(
+                            text = "Channel ${it.number}",
+                            color = Color.White,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = it.name,
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -58,12 +58,19 @@ import com.itsthe1.webexoplayer.api.ChannelInfo
 import kotlinx.coroutines.delay
 import androidx.compose.animation.fadeIn
 import androidx.compose.runtime.key
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 
 // Data class for channel (local UI model)
 data class Channel(
     val number: Int,
     val name: String,
-    val iconUrl: String?
+    val iconUrl: String?,
+    val streamUrl: String? // <-- Added streamUrl
 )
 
 // Extension function to convert ChannelInfo to Channel
@@ -73,7 +80,8 @@ fun ChannelInfo.toChannel(): Channel {
     return Channel(
         number = channel_number?.toIntOrNull() ?: 0,
         name = channel_name ?: "Unknown Channel",
-        iconUrl = iconUrl
+        iconUrl = iconUrl,
+        streamUrl = channel_src // <-- Make sure this field exists in ChannelInfo
     )
 }
 
@@ -115,13 +123,6 @@ class TVActivity : ComponentActivity() {
                                 }
                             } else {
                                 EmptyChannelsState()
-                                LaunchedEffect(Unit) {
-                                    Toast.makeText(
-                                        this@TVActivity,
-                                        "No channels available",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
                             }
                         }
                         composable(
@@ -136,6 +137,15 @@ class TVActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+        
+        // Show toast if no channels available
+        if (DeviceManager.getAllChannels(this).isEmpty()) {
+            Toast.makeText(
+                this,
+                "No channels available",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
     
@@ -292,11 +302,53 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
     val channelList = remember {
         DeviceManager.getAllChannels(context).map { it.toChannel() }.sortedBy { it.number }
     }
-    println("Channel list size: ${channelList.size}")
     var currentIndex by remember { mutableStateOf(index) }
     val channel = channelList.getOrNull(currentIndex)
     var visible by remember { mutableStateOf(true) }
     val focusRequester = remember { FocusRequester() }
+
+    // ExoPlayer setup - recreate when channel changes
+    val exoPlayer = remember(currentIndex) {
+        val currentChannel = channelList.getOrNull(currentIndex)
+        android.util.Log.d("TVActivity", "Setting up ExoPlayer for channel: ${currentChannel?.name}, streamUrl: ${currentChannel?.streamUrl}")
+        
+        if (currentChannel?.streamUrl.isNullOrBlank()) {
+            android.util.Log.w("TVActivity", "No stream URL available for channel: ${currentChannel?.name}")
+            null
+        } else {
+            try {
+                val streamUrl = currentChannel?.streamUrl
+                if (streamUrl != null) {
+                    ExoPlayer.Builder(context).build().apply {
+                        setMediaItem(MediaItem.fromUri(streamUrl))
+                        prepare()
+                        playWhenReady = true
+                        addListener(object : Player.Listener {
+                            override fun onPlayerError(error: PlaybackException) {
+                                android.util.Log.e("ExoPlayer", "Playback error for channel ${currentChannel?.name}: ${error.message}", error)
+                            }
+                            
+                            override fun onPlaybackStateChanged(playbackState: Int) {
+                                android.util.Log.d("ExoPlayer", "Playback state changed to: $playbackState for channel: ${currentChannel?.name}")
+                            }
+                        })
+                    }
+                } else {
+                    android.util.Log.w("TVActivity", "Stream URL is null for channel: ${currentChannel?.name}")
+                    null
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ExoPlayer", "Failed to create ExoPlayer for channel ${currentChannel?.name}: ${e.message}", e)
+                null
+            }
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer?.release()
+        }
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -309,6 +361,15 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
         visible = false
     }
 
+    // Handle channel switching and ExoPlayer updates
+    LaunchedEffect(currentIndex) {
+        val currentChannel = channelList.getOrNull(currentIndex)
+        android.util.Log.d("TVActivity", "Channel changed to index: $currentIndex, channel: ${currentChannel?.name}")
+        
+        // Force recomposition to update ExoPlayer
+        // The remember(currentIndex) should handle this, but we add explicit logging
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -319,7 +380,6 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
                 if (event.type == KeyEventType.KeyDown) {
                     when (event.key) {
                         Key.DirectionRight -> {
-                            println("Right key pressed")
                             currentIndex = if (currentIndex + 1 < channelList.size) {
                                 currentIndex + 1
                             } else {
@@ -328,7 +388,6 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
                             true
                         }
                         Key.DirectionLeft -> {
-                            println("Left key pressed")
                             currentIndex = if (currentIndex - 1 >= 0) {
                                 currentIndex - 1
                             } else {
@@ -337,7 +396,6 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
                             true
                         }
                         Key.Back -> {
-                            // Navigate back and pass the selected index
                             navController.popBackStack()
                             navController.navigate("channelGrid?selectedIndex=$currentIndex")
                             true
@@ -347,8 +405,51 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
                 } else false
             }
     ) {
+        // ExoPlayer view or fallback
+        if (exoPlayer != null) {
+            key(currentIndex) { // Force recreation when channel changes
+                AndroidView(
+                    factory = {
+                        PlayerView(context).apply {
+                            player = exoPlayer
+                            useController = false
+                            layoutParams = android.view.ViewGroup.LayoutParams(
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        } else {
+            // Fallback when no stream URL is available
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "No Stream Available",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "This channel is not available for streaming",
+                        color = Color(0xFFBDC3C7),
+                        fontSize = 16.sp
+                    )
+                }
+            }
+        }
+
+        // Overlay
         channel?.let {
-            println("Showing overlay for channel: ${it.number} - ${it.name}")
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(),

@@ -1,5 +1,6 @@
 package com.itsthe1.webexoplayer
 
+import HtmlText
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -44,7 +45,10 @@ import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.lazy.itemsIndexed
 import android.content.Intent
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.tv.material3.Card as TvCard
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme as TvMaterialTheme
@@ -54,6 +58,7 @@ import androidx.tv.material3.CardDefaults as TvCardDefaults
 
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.N)
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,11 +110,7 @@ class MainActivity : ComponentActivity() {
                                             .padding(20.dp)
                                     ) {
                                         // Logo
-                                        Text(
-                                            text = "Dear Guest,\n\nWe glad to welcome you and are always focused on achieving excellence through our service. For any assistance, please contact the reception and we will be happy to help. You may review us online or drop your comments in the suggestion box placed at the reception. Thank you for allowing us the pleasure of being your hosts. Have stay is a memorable one.\n\nYour Sincerely,\nGeneral Manager",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = Color.White
-                                        )
+                                        HtmlText(DeviceManager.getGreetingText(LocalContext.current) ?: "")
                                     }
                                 }
                                 Spacer(modifier = Modifier.width(24.dp))
@@ -149,6 +150,9 @@ class MainActivity : ComponentActivity() {
                                 onMenuSelected = { _, label ->
                                     if (label == "YOUTUBE") {
                                         val intent = Intent(this@MainActivity, YouTubeActivity::class.java)
+                                        startActivity(intent)
+                                    }else if(label == "TV"){
+                                        val intent = Intent(this@MainActivity, TVActivity::class.java)
                                         startActivity(intent)
                                     } else {
                                         val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)

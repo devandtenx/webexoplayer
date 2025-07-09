@@ -3,6 +3,8 @@ package com.itsthe1.webexoplayer
 import android.content.Context
 import android.content.SharedPreferences
 import com.itsthe1.webexoplayer.api.DeviceInfo
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 object DeviceManager {
     private const val PREFS_NAME = "WebExoPlayerPrefs"
@@ -21,6 +23,18 @@ object DeviceManager {
     private const val KEY_HOTEL_ID = "hotel_id"
     private const val KEY_GUEST_ID = "guest_id"
     private const val KEY_ROOM_ID = "room_id"
+    private const val KEY_CHANNEL_ID = "channel_id"
+    private const val KEY_CHANNEL_TRANS_NAME = "channel_trans_name"
+    private const val KEY_CHANNEL_NAME = "channel_name"
+    private const val KEY_CHANNEL_ICON = "channel_icon"
+    private const val KEY_CHANNEL_COVER = "channel_cover"
+    private const val KEY_CHANNEL_INTRO = "channel_intro"
+    private const val KEY_CHANNEL_TRAILER = "channel_trailer"
+    private const val KEY_CHANNEL_SRC = "channel_src"
+    private const val KEY_CHANNEL_NUMBER = "channel_number"
+    private const val KEY_CHANNEL_STATUS = "channel_status"
+    private const val KEY_CHANNEL_TYPE_ID = "channel_type_id"
+    private const val KEY_CHANNEL_HOTEL_ID = "channel_hotel_id"
     private const val KEY_GUEST_UID = "guest_uid"
     private const val KEY_GUEST_TITLE = "guest_title"
     private const val KEY_GUEST_FIRST_NAME = "guest_first_name"
@@ -31,6 +45,11 @@ object DeviceManager {
     private const val KEY_GREETING_ID = "greeting_id"
     private const val KEY_LANGUAGE_ID = "language_id"
     private const val KEY_GUEST_HOTEL_ID = "guest_hotel_id"
+    private const val KEY_GREETING_ID_INT = "greeting_id_int"
+    private const val KEY_GREETING_TEXT = "greeting_text"
+    private const val KEY_GREETING_LANGUAGE_ID = "greeting_language_id"
+    private const val KEY_GREETING_HOTEL_ID = "greeting_hotel_id"
+    private const val KEY_ALL_CHANNELS = "all_channels"
     
     private fun getSharedPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -55,6 +74,8 @@ object DeviceManager {
         editor.putString(KEY_ROOM_NUMBER, deviceInfo?.room_number)
         editor.apply()
         saveGuestInfo(context, deviceInfo?.guest)
+        saveGreetingInfo(context, deviceInfo?.greeting)
+        saveAllChannels(context, deviceInfo?.channel ?: emptyList())
     }
 
     fun getDeviceInfo(context: Context): com.itsthe1.webexoplayer.api.DeviceInfo {
@@ -75,7 +96,9 @@ object DeviceManager {
             guest_id = prefs.getString(KEY_GUEST_ID, null)?.toIntOrNull(),
             room_id = prefs.getString(KEY_ROOM_ID, null),
             room_number = prefs.getString(KEY_ROOM_NUMBER, null),
-            guest = getGuestInfo(context)
+            guest = getGuestInfo(context),
+            greeting = getGreetingInfo(context),
+            channel = getAllChannels(context)
         )
     }
 
@@ -129,6 +152,56 @@ object DeviceManager {
         )
     }
 
+    private fun saveGreetingInfo(context: Context, greetingInfo: com.itsthe1.webexoplayer.api.GreetingInfo?) {
+        val editor = getSharedPreferences(context).edit()
+        editor.putString(KEY_GREETING_ID, greetingInfo?.greeting_id?.toString())
+        editor.putString(KEY_GREETING_TEXT, greetingInfo?.greeting_text)
+        editor.putString(KEY_GREETING_LANGUAGE_ID, greetingInfo?.language_id)
+        editor.putString(KEY_GREETING_HOTEL_ID, greetingInfo?.hotel_id)
+        editor.apply()
+    }
+
+    // Remove saveChannelInfo and getChannelInfo, as they are no longer needed
+
+    fun getGreetingInfo(context: Context): com.itsthe1.webexoplayer.api.GreetingInfo? {
+        val prefs = getSharedPreferences(context)
+        val greetingId = prefs.getString(KEY_GREETING_ID, null)?.toIntOrNull()
+        return if (greetingId != null) {
+            com.itsthe1.webexoplayer.api.GreetingInfo(
+                greeting_id = greetingId,
+                greeting_text = prefs.getString(KEY_GREETING_TEXT, null),
+                language_id = prefs.getString(KEY_GREETING_LANGUAGE_ID, null),
+                hotel_id = prefs.getString(KEY_GREETING_HOTEL_ID, null)
+            )
+        } else null
+    }
+
+    fun getChannelInfo(context: Context): com.itsthe1.webexoplayer.api.ChannelInfo? {
+        val prefs = getSharedPreferences(context)
+        val channelId = prefs.getString(KEY_CHANNEL_ID, null)?.toIntOrNull()
+        return if (channelId != null) {
+            com.itsthe1.webexoplayer.api.ChannelInfo(
+                channel_id = channelId,
+                channel_trans_name = prefs.getString(KEY_CHANNEL_TRANS_NAME, null),
+                channel_name = prefs.getString(KEY_CHANNEL_NAME, null),
+
+                channel_icon = prefs.getString(KEY_CHANNEL_ICON, null),
+                channel_cover = prefs.getString(KEY_CHANNEL_COVER, null),
+                channel_intro = prefs.getString(KEY_CHANNEL_INTRO, null),
+                channel_trailer = prefs.getString(KEY_CHANNEL_TRAILER, null),
+                channel_src = prefs.getString(KEY_CHANNEL_SRC, null),
+                channel_number = prefs.getString(KEY_CHANNEL_NUMBER, null),
+                channel_status = prefs.getString(KEY_CHANNEL_STATUS, null),
+                channel_type_id = prefs.getString(KEY_CHANNEL_TYPE_ID, null),
+                hotel_id = prefs.getString(KEY_CHANNEL_HOTEL_ID, null)
+            )
+        } else null
+    }
+
+    fun getGreetingText(context: Context): String? {
+        return getGreetingInfo(context)?.greeting_text
+    }
+
     fun getGuestFullName(context: Context): String? {
         val guest = getGuestInfo(context)
         if (guest == null) return null
@@ -139,5 +212,48 @@ object DeviceManager {
     fun getRoomNumber(context: Context): String? {
         val prefs = getSharedPreferences(context)
         return prefs.getString(KEY_ROOM_NUMBER, null)
+    }
+
+    // Save all channels to SharedPreferences
+    fun saveAllChannels(context: Context, channels: List<com.itsthe1.webexoplayer.api.ChannelInfo>) {
+        val editor = getSharedPreferences(context).edit()
+        val gson = Gson()
+        val channelsJson = gson.toJson(channels)
+        editor.putString(KEY_ALL_CHANNELS, channelsJson)
+        editor.apply()
+    }
+
+    // Get all channels from SharedPreferences
+    fun getAllChannels(context: Context): List<com.itsthe1.webexoplayer.api.ChannelInfo> {
+        val prefs = getSharedPreferences(context)
+        val channelsJson = prefs.getString(KEY_ALL_CHANNELS, null)
+        
+        return if (channelsJson != null) {
+            try {
+                val gson = Gson()
+                val type = object : TypeToken<List<com.itsthe1.webexoplayer.api.ChannelInfo>>() {}.type
+                gson.fromJson(channelsJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    // Clear all channels from SharedPreferences
+    fun clearAllChannels(context: Context) {
+        val editor = getSharedPreferences(context).edit()
+        editor.remove(KEY_ALL_CHANNELS)
+        editor.apply()
+    }
+
+    // Debug function to print current channels
+    fun debugPrintChannels(context: Context) {
+        val channels = getAllChannels(context)
+        println("DEBUG: Found ${channels.size} channels in SharedPreferences:")
+        channels.forEach { channel ->
+            println("  - Channel ${channel.channel_number}: ${channel.channel_trans_name}")
+        }
     }
 } 

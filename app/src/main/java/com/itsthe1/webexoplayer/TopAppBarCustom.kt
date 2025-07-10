@@ -17,11 +17,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Icon
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 
 @Composable
 fun TopAppBarCustom() {
@@ -53,46 +50,67 @@ fun TopAppBarCustom() {
         ) {
             // Left: Logo and Room
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Replace with your logo resource if available
-                Text(
-                    text = "10",
-                    color = Color(0xFFFF2D2D),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
-                    fontFamily = FontFamily.SansSerif
-                )
-                Text(
-                    text = "X",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
-                    fontFamily = FontFamily.SansSerif
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "TECHNOLOGIES",
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.SansSerif
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                
+                val context = LocalContext.current
+                val logoFileName = DeviceManager.getHotelLogo(context)
+                val logoUrl = if (!logoFileName.isNullOrBlank()) {
+                    "http://192.168.56.1/admin-portal/assets/uploads/Logos/" + logoFileName
+                } else null
+                if (!logoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = logoUrl,
+                        contentDescription = "Hotel Logo",
+                        modifier = Modifier.size(140.dp),
+                        // You can adjust size as needed
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                } else {
+                    // Fallback to text logo if no image
+                    Text(
+                        text = "10",
+                        color = Color(0xFFFF2D2D),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 32.sp,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                    Text(
+                        text = "X",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 32.sp,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "TECHNOLOGIES",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.SansSerif
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
             }
-            // Center: Welcome message
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFFB0B0B0).copy(alpha = 0.85f), shape = RoundedCornerShape(20.dp))
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+            // Center: Welcome message and Route info
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = DeviceManager.getGuestFullName(LocalContext.current) ?: "",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Welcome message
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xFFB0B0B0).copy(alpha = 0.85f), shape = RoundedCornerShape(20.dp))
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = DeviceManager.getGuestFullName(LocalContext.current) ?: "",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                // Route information
+                RouteInfoDisplay()
             }
             // Room number to the right of welcome message
             Text(
@@ -124,6 +142,26 @@ fun TopAppBarCustom() {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun RouteInfoDisplay() {
+    val context = LocalContext.current
+    val mainRoutes = DeviceManager.getMainRoutes(context)
+    val homeChildRoutes = DeviceManager.getHomeChildRoutes(context)
+    
+    if (mainRoutes.isNotEmpty()) {
+        val currentRoute = mainRoutes.firstOrNull { it.route_name == "HOME" }
+        if (currentRoute != null) {
+            Text(
+                text = "Current: ${currentRoute.route_name} (${homeChildRoutes.size} options)",
+                color = Color(0xFF00FF00),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
         }
     }
 } 

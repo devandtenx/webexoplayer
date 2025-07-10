@@ -65,6 +65,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-svg:2.5.0")
+    implementation("io.coil-kt:coil-base:2.5.0")
     implementation(libs.androidx.navigation.common.android)
     implementation(libs.androidx.navigation.compose.android)
     implementation("androidx.compose.runtime:runtime-saveable")

@@ -30,7 +30,7 @@ class MenuDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("MenuDetailActivity", "Started MenuDetailActivity")
-        val label = intent.getStringExtra("label") ?: "Sample"
+        val label = intent.getStringExtra("route_key") ?: "Sample"
         try {
             setContent {
                 WebExoPlayerTheme {

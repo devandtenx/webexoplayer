@@ -25,8 +25,9 @@ data class DeviceInfo(
     val room_number: String?,
     val guest: GuestInfo?,
     val greeting: GreetingInfo?,
-    val channel: List<ChannelInfo>?
-    
+    val channel: List<ChannelInfo>?,
+    val hotel: HostelInfo?,
+    val routes: List<RouteInfo>?
 )
 
 data class GuestInfo(
@@ -63,5 +64,41 @@ data class ChannelInfo(
     val channel_status: String?,
     val channel_type_id : String?,
     val hotel_id  : String?,
+)
 
+data class HostelInfo(
+    val hotel_id :Int?,
+    val hotel_name :String?,
+    val hotel_logo :String?,
+    val hotel_covers :String?,
+    val hotel_intro :String?,
+    val hotel_about :String?,
+    val hotel_address :String?,
+    val hotel_social :String?,
+)
+
+data class RouteInfo(
+    val route_id: Int?,
+    val route_name: String?,
+    val route_key: String?,
+    val route_attr: String?,
+    val route_callback: String?,
+    val route_controller: String?,
+    val route_icon: String?,
+    val route_bg_type: Int?,
+    val route_music_type: Int?,
+    val route_music: String?,
+    val route_bg: String?, // Changed from List<RouteBackground>? to String? (JSON string)
+    val route_parent_id: Int?,
+    val route_visibility: Int?,
+    val display_order: Int?,
+    val app_id: Int?,
+    val hotel_id: Int?,
+    val language_id: Int?,
+    val child_routes: List<RouteInfo>?
+)
+
+data class RouteBackground(
+    val image: String?,
+    val isActive: String?
 )

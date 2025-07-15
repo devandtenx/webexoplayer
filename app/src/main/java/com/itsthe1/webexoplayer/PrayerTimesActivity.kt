@@ -59,15 +59,19 @@ fun PrayerTimesPage(route_key: String) {
     val context = LocalContext.current
     val bgImage = remember { DeviceManager.getRouteBackgroundImageByKey(context, route_key) }
     val bgImageUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Backgrounds/$bgImage"
-    val city = "riyadh" // Hardcoded city
 
-    // Fetch prayer times from API for the hardcoded city
+    // Fetch hotel address and extract city
+    val hotelInfo = DeviceManager.getHotelInfo(context)
+    val hotelAddress = hotelInfo?.hotel_address
+    val city = hotelAddress?.split(",")?.getOrNull(1)?.trim()?.lowercase(Locale.getDefault()) ?: "riyadh"
+
+    // Fetch prayer times from API for the extracted city
     LaunchedEffect(city) {
         isLoading = true
         try {
             val response = withContext(Dispatchers.IO) {
                 val call = MuslimSalatRetrofitClient.instance.getPrayerTimes(
-                    location = city.replace(" ", "-").lowercase(Locale.getDefault()),
+                    location = city.replace(" ", "-"),
                     apiKey = AppGlobals.muslimsalatAPIKey
                 )
                 call.execute()
@@ -120,7 +124,14 @@ fun PrayerTimesPage(route_key: String) {
                 text = "Prayer Time by muslimsalat.com",
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            // Show the location name
+            Text(
+                text = "Location: " + city.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
             if (isLoading) {
                 Text("Loading prayer times...", color = Color.White, style = MaterialTheme.typography.bodyLarge)

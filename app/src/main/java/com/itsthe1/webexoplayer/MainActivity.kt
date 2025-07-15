@@ -185,6 +185,11 @@ class MainActivity : ComponentActivity() {
                                             val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
                                             activityManager.clearApplicationUserData()
                                         }
+                                        "KEY_WEATHER" -> {
+                                            val intent = Intent(this@MainActivity, WeatherActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
                                         else -> {
                                             val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)
                                             intent.putExtra("route_key", routeKey)

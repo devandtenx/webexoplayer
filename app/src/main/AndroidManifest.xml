@@ -46,6 +46,7 @@
         <activity android:name="com.itsthe1.webexoplayer.TVActivity" />
         <activity android:name="com.itsthe1.webexoplayer.WorldClockActivity" />
         <activity android:name="com.itsthe1.webexoplayer.PrayerTimesActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.WeatherActivity" />
 
     </application>
 

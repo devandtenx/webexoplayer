@@ -16,17 +16,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.itsthe1.webexoplayer.ui.theme.WebExoPlayerTheme
-import androidx.compose.material3.Icon
+import coil.compose.AsyncImage
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import com.itsthe1.webexoplayer.TopAppBarCustom
+import androidx.compose.ui.text.style.TextOverflow
 
 // Data class for weather forecast
 data class WeatherForecast(
     val dayOfWeek: String,
     val date: String,
     val description: String,
-    val iconRes: Int, // Drawable resource for weather icon
+    val iconUrl: String, // URL for weather icon
     val highTemp: String,
     val lowTemp: String
 )
@@ -35,59 +42,98 @@ data class WeatherForecast(
 fun WeatherCard(forecast: WeatherForecast) {
     Card(
         modifier = Modifier
-            .width(140.dp)
-            .height(260.dp)
-            .padding(8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF444444))
+            .width(175.dp)
+            .height(320.dp)
+            .padding(4.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xCC222222)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(horizontal = 16.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(forecast.dayOfWeek, color = Color.White, style = MaterialTheme.typography.titleMedium)
-            Text(forecast.date, color = Color.White, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(8.dp))
-            Icon(
-                painter = painterResource(id = forecast.iconRes),
-                contentDescription = forecast.description,
-                tint = Color.Unspecified,
-                modifier = Modifier.size(48.dp)
+            Text(
+                forecast.dayOfWeek,
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(8.dp))
-            Text(forecast.description, color = Color.White, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(8.dp))
-            Text("${forecast.highTemp} / ${forecast.lowTemp}", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                forecast.date,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(12.dp))
+            AsyncImage(
+                model = forecast.iconUrl,
+                contentDescription = forecast.description,
+                modifier = Modifier.size(120.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                forecast.description,
+                color = Color.White,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "${forecast.highTemp} / ${forecast.lowTemp}",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
 @Composable
-fun WeatherPage(forecasts: List<WeatherForecast>) {
-    Column(
+fun WeatherPage(forecasts: List<WeatherForecast>, route_key: String) {
+    val context = LocalContext.current
+    val bgImage = remember { DeviceManager.getRouteBackgroundImageByKey(context, route_key) }
+    val bgImageUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Backgrounds/$bgImage"
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF888888)),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Forecast by AccuWeather",
-            color = Color.White,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 16.dp)
+        // Background image
+        AsyncImage(
+            model = bgImageUrl,
+            contentDescription = "Background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
         )
-        Row(
+        // Foreground content (weather UI)
+        Column(
             modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .fillMaxSize(), // Overlay for readability
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            forecasts.forEach { forecast ->
-                WeatherCard(forecast)
+            TopAppBarCustom()
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Forecast by AccuWeather",
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            ) {
+                forecasts.forEach { forecast ->
+                    WeatherCard(forecast)
+                }
             }
         }
     }
@@ -96,16 +142,18 @@ fun WeatherPage(forecasts: List<WeatherForecast>) {
 class WeatherActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val route_key = intent.getStringExtra("route_key") ?: "KEY_WEATHER"
+        val iconUrl = "http://192.168.56.1/one-tv/themes/default/default/weather/2.png"
         val sampleForecasts = listOf(
-            WeatherForecast("Tuesday", "18 March", "Fog in the a.m.; mostly sunny", R.drawable.ic_sunny, "28.5°", "18.6°"),
-            WeatherForecast("Wednesday", "19 March", "Sunny and delightful", R.drawable.ic_sunny, "29.5°", "19.6°"),
-            WeatherForecast("Thursday", "20 March", "Sunny and very warm", R.drawable.ic_sunny, "31.6°", "22.6°"),
-            WeatherForecast("Friday", "21 March", "Hot with plenty of sun", R.drawable.ic_sunny, "33.6°", "24.9°"),
-            WeatherForecast("Saturday", "22 March", "Brilliant sunshine and hot", R.drawable.ic_sunny, "34.3°", "25.1°")
+            WeatherForecast("Tuesday", "18 March", "Fog in the a.m.; mostly sunny", iconUrl, "28.5°", "18.6°"),
+            WeatherForecast("Wednesday", "19 March", "Sunny and delightful", iconUrl, "29.5°", "19.6°"),
+            WeatherForecast("Thursday", "20 March", "Sunny and very warm", iconUrl, "31.6°", "22.6°"),
+            WeatherForecast("Friday", "21 March", "Hot with plenty of sun", iconUrl, "33.6°", "24.9°"),
+            WeatherForecast("Saturday", "22 March", "Brilliant sunshine and hot", iconUrl, "34.3°", "25.1°")
         )
         setContent {
             WebExoPlayerTheme {
-                WeatherPage(sampleForecasts)
+                WeatherPage(sampleForecasts, route_key) // Replace "your_route_key_here" with the actual route key
             }
         }
     }

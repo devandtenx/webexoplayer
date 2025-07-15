@@ -72,7 +72,6 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
 
         
         setContent {
@@ -83,9 +82,15 @@ class MainActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier.fillMaxSize()
                     ) {
+
+                        val bgImage = remember {
+                            DeviceManager.getRouteBackgroundImageByKey(this@MainActivity, "KEY_HOME")
+                        }
+                        
+                        val bgImageUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Backgrounds/$bgImage"
                         // Background Image
                         AsyncImage(
-                            model = "http://192.168.56.1/admin-portal/assets/uploads/Backgrounds/3fd4aacc0d97bb920ad81785d55a89d5@3x.png",
+                            model = bgImageUrl,
                             contentDescription = "Background",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -163,6 +168,16 @@ class MainActivity : ComponentActivity() {
                                         }
                                         "KEY_XTV" -> {
                                             val intent = Intent(this@MainActivity, TVActivity::class.java)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_WORLD_CLOCK" -> {
+                                            val intent = Intent(this@MainActivity, WorldClockActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_PRAYER_TIME" -> {
+                                            val intent = Intent(this@MainActivity, PrayerTimesActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
                                             startActivity(intent)
                                         }
                                         else -> {
@@ -261,8 +276,7 @@ fun MenuButtonWithImage(label: String, routeIcon: String?, selected: Boolean, on
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (!routeIcon.isNullOrBlank()) {
-                val iconUrl = "http://192.168.56.1/admin-portal/assets/uploads/Menus/Menu_Icons/$routeIcon"
-                println("DEBUG: Loading icon from URL: $iconUrl")
+                val iconUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Menus/Menu_Icons/$routeIcon"
                 
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -273,15 +287,12 @@ fun MenuButtonWithImage(label: String, routeIcon: String?, selected: Boolean, on
                     modifier = Modifier.size(40.dp),
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White), // Tint SVG to white
                     onError = { state ->
-                        println("DEBUG: Error loading image for $label: ${state.result}")
                     },
                     onSuccess = { state ->
-                        println("DEBUG: Successfully loaded image for $label")
                     }
                 )
             } else {
                 // Fallback to default icon if no route icon
-                println("DEBUG: No route icon provided for $label, using default icon")
                 Icon(
                     imageVector = Icons.Filled.Language,
                     contentDescription = label,
@@ -317,9 +328,7 @@ fun TVMenuRow(
     val context = LocalContext.current
     val routes = DeviceManager.getRoutesByParentKey(context, "KEY_HOME")
     
-    println("DEBUG: Found ${routes.size} routes")
     routes.forEach { route ->
-        println("DEBUG: Route: ${route.route_name}, Icon: ${route.route_icon}, Key: ${route.route_key}")
     }
  
 
@@ -394,10 +403,8 @@ fun TestImageButton() {
                 contentDescription = "Test Image",
                 modifier = Modifier.size(40.dp),
                 onError = { state ->
-                    println("DEBUG: Error loading test image: ${state.result}")
                 },
                 onSuccess = { state ->
-                    println("DEBUG: Successfully loaded test image")
                 }
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -418,7 +425,6 @@ fun RoutesDisplay() {
     val context = LocalContext.current
     val routes = DeviceManager.getRoutesByParentId(context, 5211)
     
-    println("DEBUG: RoutesDisplay - Found ${routes.size} routes")
     
     if (routes.isEmpty()) {
         Text(

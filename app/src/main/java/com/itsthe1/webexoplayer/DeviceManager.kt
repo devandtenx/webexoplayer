@@ -60,8 +60,66 @@ object DeviceManager {
     private const val KEY_HOTEL_INFO_SOCIAL = "hotel_info_social"
     private const val KEY_ALL_ROUTES = "all_routes"
     
+    // Server configuration keys
+    private const val KEY_SERVER_URL = "server_url"
+    private const val KEY_SERVER_RESOLUTION = "server_resolution"
+    private const val KEY_SERVER_APP_ID = "server_app_id"
+    private const val KEY_SERVER_RESOLUTION_VALUE = "server_resolution_value"
+    
     private fun getSharedPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    // Save server configuration
+    fun saveServerConfiguration(
+        context: Context,
+        serverUrl: String,
+        resolution: String,
+        appId: Int,
+        resolutionValue: Int
+    ) {
+        val editor = getSharedPreferences(context).edit()
+        editor.putString(KEY_SERVER_URL, serverUrl)
+        editor.putString(KEY_SERVER_RESOLUTION, resolution)
+        editor.putInt(KEY_SERVER_APP_ID, appId)
+        editor.putInt(KEY_SERVER_RESOLUTION_VALUE, resolutionValue)
+        editor.apply()
+    }
+
+    // Get server URL
+    fun getServerUrl(context: Context): String {
+        return getSharedPreferences(context).getString(KEY_SERVER_URL, "") ?: ""
+    }
+
+    // Get server resolution
+    fun getServerResolution(context: Context): String {
+        return getSharedPreferences(context).getString(KEY_SERVER_RESOLUTION, "720p") ?: "720p"
+    }
+
+    // Get server app ID
+    fun getServerAppId(context: Context): Int {
+        return getSharedPreferences(context).getInt(KEY_SERVER_APP_ID, 2)
+    }
+
+    // Get server resolution value
+    fun getServerResolutionValue(context: Context): Int {
+        return getSharedPreferences(context).getInt(KEY_SERVER_RESOLUTION_VALUE, 720)
+    }
+
+    // Check if server configuration exists
+    fun hasServerConfiguration(context: Context): Boolean {
+        val serverUrl = getServerUrl(context)
+        return serverUrl.isNotBlank()
+    }
+
+    // Clear server configuration
+    fun clearServerConfiguration(context: Context) {
+        val editor = getSharedPreferences(context).edit()
+        editor.remove(KEY_SERVER_URL)
+        editor.remove(KEY_SERVER_RESOLUTION)
+        editor.remove(KEY_SERVER_APP_ID)
+        editor.remove(KEY_SERVER_RESOLUTION_VALUE)
+        editor.apply()
     }
 
     fun saveDeviceInfo(context: Context, deviceInfo: DeviceInfo?) {
@@ -264,7 +322,6 @@ object DeviceManager {
     // Debug function to print current channels
     fun debugPrintChannels(context: Context) {
         val channels = getAllChannels(context)
-        println("DEBUG: Found ${channels.size} channels in SharedPreferences:")
         channels.forEach { channel ->
             println("  - Channel ${channel.channel_number}: ${channel.channel_trans_name}")
         }
@@ -349,7 +406,6 @@ object DeviceManager {
     // Debug function to print current routes
     fun debugPrintRoutes(context: Context) {
         val routes = getAllRoutes(context)
-        println("DEBUG: Found ${routes.size} routes in SharedPreferences:")
         routes.forEach { route ->
             println("  - Route ${route.route_id}: ${route.route_name} (${route.route_key})")
         }
@@ -388,6 +444,23 @@ object DeviceManager {
         val parentId = parentRoute?.route_id ?: return emptyList()
         return allRoutes.filter { route ->
             route.route_parent_id == parentId
+        }
+    }
+
+    // Fetch background image URL from route using routeKey
+    fun getRouteBackgroundImageByKey(context: Context, routeKey: String): String? {
+        val routes = getAllRoutes(context)
+        val route = routes.find { it.route_key == routeKey && (it.route_parent_id ?: 0) == 0 } ?: return null
+        val routeBgJson = route.route_bg ?: return null
+        try {
+            val gson = Gson()
+            val type = object : TypeToken<List<com.itsthe1.webexoplayer.api.RouteBackground>>() {}.type
+            val backgrounds: List<com.itsthe1.webexoplayer.api.RouteBackground> = gson.fromJson(routeBgJson, type) ?: return null
+            // Prefer active background where isActive == "true"
+            val activeBg = backgrounds.find { it.isActive == "true" }
+            return activeBg?.image ?: backgrounds.firstOrNull()?.image
+        } catch (e: Exception) {
+            return null
         }
     }
 } 

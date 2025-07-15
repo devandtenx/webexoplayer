@@ -53,7 +53,7 @@ fun TopAppBarCustom() {
                 val context = LocalContext.current
                 val logoFileName = DeviceManager.getHotelLogo(context)
                 val logoUrl = if (!logoFileName.isNullOrBlank()) {
-                    "http://192.168.56.1/admin-portal/assets/uploads/Logos/" + logoFileName
+                    "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Logos/" + logoFileName
                 } else null
                 if (!logoUrl.isNullOrBlank()) {
                     AsyncImage(

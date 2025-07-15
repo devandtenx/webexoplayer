@@ -86,6 +86,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.videolan.android:libvlc-all:3.6.0")
     implementation("androidx.media3:media3-ui:1.2.1")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }
 
 // WebView is part of Android SDK; Compose interop is handled by androidx.compose.ui:ui already included.

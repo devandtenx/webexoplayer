@@ -1,19 +1,17 @@
 package com.itsthe1.webexoplayer.api
 
-import com.itsthe1.webexoplayer.AppGlobals
-import com.itsthe1.webexoplayer.api.ApiService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-object RetrofitClient {
-    private val BASE_URL = "http://${AppGlobals.webViewURL}/admin-portal/"
+object MuslimSalatRetrofitClient {
+    private const val BASE_URL = "https://muslimsalat.com/"
 
-    val instance: ApiService by lazy {
+    val instance: MuslimSalatService by lazy {
         val retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
-        retrofit.create(ApiService::class.java)
+        retrofit.create(MuslimSalatService::class.java)
     }
-}
+} 

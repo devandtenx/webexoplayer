@@ -65,7 +65,7 @@ data class Channel(
 )
 
 fun ChannelInfo.toChannel(): Channel {
-    val baseUrl = "http://192.168.56.1/admin-portal/assets/uploads/Channels/Channel/"
+    val baseUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Channels/Channel/"
     val iconUrl = if (!channel_icon.isNullOrBlank()) baseUrl + channel_icon else null
     return Channel(
         number = channel_number?.toIntOrNull() ?: 0,

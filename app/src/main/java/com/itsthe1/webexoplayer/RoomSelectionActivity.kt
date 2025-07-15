@@ -49,7 +49,7 @@ fun getMacAddress(context: Context): String {
 class RoomSelectionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+        AppGlobals.initialize(this)
         // Always try to lookup by device ID, do not check or save room number locally
         val androidId = android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: ""
         val context = this

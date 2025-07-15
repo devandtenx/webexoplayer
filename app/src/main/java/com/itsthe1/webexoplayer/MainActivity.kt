@@ -1,6 +1,7 @@
 package com.itsthe1.webexoplayer
 
 import HtmlText
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -55,14 +56,23 @@ import androidx.tv.material3.MaterialTheme as TvMaterialTheme
 import androidx.tv.material3.Text as TvText
 import androidx.tv.material3.Surface as TvSurface
 import androidx.tv.material3.CardDefaults as TvCardDefaults
-
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
+import coil.ImageLoader
+import coil.decode.SvgDecoder
+import coil.request.ImageRequest
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.N)
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
 
         
         setContent {
@@ -73,9 +83,15 @@ class MainActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier.fillMaxSize()
                     ) {
+
+                        val bgImage = remember {
+                            DeviceManager.getRouteBackgroundImageByKey(this@MainActivity, "KEY_HOME")
+                        }
+                        
+                        val bgImageUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Backgrounds/$bgImage"
                         // Background Image
                         AsyncImage(
-                            model = "https://s56442.cdn.ngenix.net/img/0/0/resize/rshb/agrolife/1647277344_10-kartinkin-net-p-kartinki-otel-11.jpg",
+                            model = bgImageUrl,
                             contentDescription = "Background",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -114,50 +130,66 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 Spacer(modifier = Modifier.width(24.dp))
-                                // Right Card: Ad Image with overlay text
+                                // Right Card: Routes Information
                                 Card(
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(260.dp),
                                     shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f)),
+                                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.8f)),
                                     elevation = CardDefaults.cardElevation(0.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize()
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(16.dp)
+                                            .verticalScroll(rememberScrollState())
                                     ) {
-                                        AsyncImage(
-                                            model = "https://cdn.pixabay.com/photo/2016/03/05/19/02/chicken-1239424_1280.jpg",
-                                            contentDescription = "Ad",
-                                            modifier = Modifier.matchParentSize(),
-                                            contentScale = ContentScale.FillBounds
+                                        Text(
+                                            text = "Routes (Parent ID: 5211)",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center
                                         )
-                                        // Overlay image fills the card
-                                        AsyncImage(
-                                            model = "https://assets.bwbx.io/images/users/iqjWHBFdfxIU/iLdmwJ3yOq0s/v1/1200x800.jpg",
-                                            contentDescription = "Ad Overlay Image",
-                                            modifier = Modifier
-                                                .align(Alignment.Center)
-                                                .matchParentSize(),
-                                            contentScale = ContentScale.FillBounds
-                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        RoutesDisplay()
                                     }
                                 }
                             }
                             Spacer(modifier = Modifier.weight(1f))
                             // 3. Bottom Menu Row
                             TVMenuRow(
-                                onMenuSelected = { _, label ->
-                                    if (label == "YOUTUBE") {
-                                        val intent = Intent(this@MainActivity, YouTubeActivity::class.java)
-                                        startActivity(intent)
-                                    }else if(label == "TV"){
-                                        val intent = Intent(this@MainActivity, TVActivity::class.java)
-                                        startActivity(intent)
-                                    } else {
-                                        val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)
-                                        intent.putExtra("label", label)
-                                        startActivity(intent)
+                                onMenuSelected = { _, routeKey ->
+                                    when (routeKey) {
+                                        "KEY_YOUTUBE" -> {
+                                            val intent = Intent(this@MainActivity, YouTubeActivity::class.java)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_XTV" -> {
+                                            val intent = Intent(this@MainActivity, TVActivity::class.java)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_WORLD_CLOCK" -> {
+                                            val intent = Intent(this@MainActivity, WorldClockActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_PRAYER_TIME" -> {
+                                            val intent = Intent(this@MainActivity, PrayerTimesActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_CLEAR_DATA" -> {
+                                            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                                            activityManager.clearApplicationUserData()
+                                        }
+                                        else -> {
+                                            val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
                                     }
                                 },
                                 initialSelectedIndex = 0
@@ -191,7 +223,9 @@ fun MenuButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVec
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp, horizontal = 8.dp), // more padding
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -207,7 +241,82 @@ fun MenuButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVec
                 color = Color.White,
                 style = TvMaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun MenuButtonWithImage(label: String, routeIcon: String?, selected: Boolean, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val imageLoader = createImageLoader(context)
+    
+    TvCard(
+        onClick = onClick,
+        modifier = Modifier
+            .width(120.dp)
+            .height(120.dp),
+        scale = TvCardDefaults.scale(scale = 1.1f),
+        border = TvCardDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                BorderStroke(3.dp, Color(0xFFFFA000))
+            )
+        ),
+        colors = TvCardDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.7f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp, horizontal = 8.dp), // more padding
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (!routeIcon.isNullOrBlank()) {
+                val iconUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Menus/Menu_Icons/$routeIcon"
+                
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(iconUrl)
+                        .build(),
+                    imageLoader = imageLoader,
+                    contentDescription = label,
+                    modifier = Modifier.size(40.dp),
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White), // Tint SVG to white
+                    onError = { state ->
+                    },
+                    onSuccess = { state ->
+                    }
+                )
+            } else {
+                // Fallback to default icon if no route icon
+                Icon(
+                    imageVector = Icons.Filled.Language,
+                    contentDescription = label,
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            TvText(
+                text = label,
+                color = Color.White,
+                style = TvMaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
             )
         }
     }
@@ -216,38 +325,166 @@ fun MenuButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVec
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun TVMenuRow(
-    onMenuSelected: (Int, String) -> Unit,
+    onMenuSelected: (Int, String) -> Unit, // Now passes route_key
     initialSelectedIndex: Int = 0
 ) {
     var selectedIndex by remember { mutableStateOf(initialSelectedIndex) }
     
-    val menuOptions = listOf(
-        MenuOption("TV", Icons.Filled.Tv),
-        MenuOption("SPECIAL OFFERS", Icons.Filled.LocalOffer),
-        MenuOption("YOUTUBE", Icons.Filled.PlayArrow),
-        MenuOption("BROWSER", Icons.Filled.Language),
-        MenuOption("Connect", Icons.Filled.Cable),
-        MenuOption("Messages", Icons.Filled.Email),
-        MenuOption("IN-ROOM DINING", Icons.Filled.Restaurant)
-    )
+    val context = LocalContext.current
+    val routes = DeviceManager.getRoutesByParentKey(context, "KEY_HOME")
+    
+    routes.forEach { route ->
+    }
+ 
 
-    LazyRow(
+    if (routes.isNotEmpty()) {
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            itemsIndexed(routes) { index, route ->
+                MenuButtonWithImage(
+                    label = route.route_name ?: "Unknown",
+                    routeIcon = route.route_icon,
+                    selected = index == selectedIndex,
+                    onClick = { 
+                        selectedIndex = index
+                        onMenuSelected(index, route.route_key ?: "") // Pass route_key instead of label
+                    }
+                )
+            }
+        }
+    } else {
+        // Show a test button with a known working image
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            item {
+                TestImageButton()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun TestImageButton() {
+    val context = LocalContext.current
+    val imageLoader = createImageLoader(context)
+    
+    TvCard(
+        onClick = { },
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+            .width(120.dp)
+            .height(120.dp),
+        scale = TvCardDefaults.scale(scale = 1.1f),
+        border = TvCardDefaults.border(
+            focusedBorder = androidx.tv.material3.Border(
+                BorderStroke(3.dp, Color(0xFFFFA000))
+            )
+        ),
+        colors = TvCardDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.7f)
+        )
     ) {
-        itemsIndexed(menuOptions) { index, option ->
-            MenuButton(
-                label = option.label,
-                icon = option.icon,
-                selected = index == selectedIndex,
-                onClick = { 
-                    selectedIndex = index
-                    onMenuSelected(index, option.label) 
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Test with a known working image
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data("https://picsum.photos/40/40")
+                    .build(),
+                imageLoader = imageLoader,
+                contentDescription = "Test Image",
+                modifier = Modifier.size(40.dp),
+                onError = { state ->
+                },
+                onSuccess = { state ->
                 }
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            TvText(
+                text = "Test Image",
+                color = Color.White,
+                style = TvMaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2
+            )
         }
+    }
+}
+
+
+@Composable
+fun RoutesDisplay() {
+    val context = LocalContext.current
+    val routes = DeviceManager.getRoutesByParentId(context, 5211)
+    
+    
+    if (routes.isEmpty()) {
+        Text(
+            text = "No routes found for parent ID 5211",
+            color = Color.Gray,
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center
+        )
+    } else {
+        routes.forEach { route ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text(
+                    text = "• ${route.route_name ?: "Unknown"} (ID: ${route.route_id})",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium
+                )
+                if (route.route_key != null) {
+                    Text(
+                        text = "  Key: ${route.route_key}",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (route.route_icon != null) {
+                    Text(
+                        text = "  Icon: ${route.route_icon}",
+                        color = Color.Yellow,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (route.route_callback != null) {
+                    Text(
+                        text = "  Callback: ${route.route_callback}",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun createImageLoader(context: android.content.Context): ImageLoader {
+    return remember {
+        ImageLoader.Builder(context)
+            .components {
+                add(SvgDecoder.Factory())
+            }
+            .build()
     }
 }

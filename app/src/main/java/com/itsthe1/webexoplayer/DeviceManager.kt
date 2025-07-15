@@ -50,9 +50,76 @@ object DeviceManager {
     private const val KEY_GREETING_LANGUAGE_ID = "greeting_language_id"
     private const val KEY_GREETING_HOTEL_ID = "greeting_hotel_id"
     private const val KEY_ALL_CHANNELS = "all_channels"
+    private const val KEY_HOTEL_INFO_ID = "hotel_info_id"
+    private const val KEY_HOTEL_INFO_NAME = "hotel_info_name"
+    private const val KEY_HOTEL_INFO_LOGO = "hotel_info_logo"
+    private const val KEY_HOTEL_INFO_COVERS = "hotel_info_covers"
+    private const val KEY_HOTEL_INFO_INTRO = "hotel_info_intro"
+    private const val KEY_HOTEL_INFO_ABOUT = "hotel_info_about"
+    private const val KEY_HOTEL_INFO_ADDRESS = "hotel_info_address"
+    private const val KEY_HOTEL_INFO_SOCIAL = "hotel_info_social"
+    private const val KEY_ALL_ROUTES = "all_routes"
+    
+    // Server configuration keys
+    private const val KEY_SERVER_URL = "server_url"
+    private const val KEY_SERVER_RESOLUTION = "server_resolution"
+    private const val KEY_SERVER_APP_ID = "server_app_id"
+    private const val KEY_SERVER_RESOLUTION_VALUE = "server_resolution_value"
     
     private fun getSharedPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    // Save server configuration
+    fun saveServerConfiguration(
+        context: Context,
+        serverUrl: String,
+        resolution: String,
+        appId: Int,
+        resolutionValue: Int
+    ) {
+        val editor = getSharedPreferences(context).edit()
+        editor.putString(KEY_SERVER_URL, serverUrl)
+        editor.putString(KEY_SERVER_RESOLUTION, resolution)
+        editor.putInt(KEY_SERVER_APP_ID, appId)
+        editor.putInt(KEY_SERVER_RESOLUTION_VALUE, resolutionValue)
+        editor.apply()
+    }
+
+    // Get server URL
+    fun getServerUrl(context: Context): String {
+        return getSharedPreferences(context).getString(KEY_SERVER_URL, "") ?: ""
+    }
+
+    // Get server resolution
+    fun getServerResolution(context: Context): String {
+        return getSharedPreferences(context).getString(KEY_SERVER_RESOLUTION, "720p") ?: "720p"
+    }
+
+    // Get server app ID
+    fun getServerAppId(context: Context): Int {
+        return getSharedPreferences(context).getInt(KEY_SERVER_APP_ID, 2)
+    }
+
+    // Get server resolution value
+    fun getServerResolutionValue(context: Context): Int {
+        return getSharedPreferences(context).getInt(KEY_SERVER_RESOLUTION_VALUE, 720)
+    }
+
+    // Check if server configuration exists
+    fun hasServerConfiguration(context: Context): Boolean {
+        val serverUrl = getServerUrl(context)
+        return serverUrl.isNotBlank()
+    }
+
+    // Clear server configuration
+    fun clearServerConfiguration(context: Context) {
+        val editor = getSharedPreferences(context).edit()
+        editor.remove(KEY_SERVER_URL)
+        editor.remove(KEY_SERVER_RESOLUTION)
+        editor.remove(KEY_SERVER_APP_ID)
+        editor.remove(KEY_SERVER_RESOLUTION_VALUE)
+        editor.apply()
     }
 
     fun saveDeviceInfo(context: Context, deviceInfo: DeviceInfo?) {
@@ -76,6 +143,8 @@ object DeviceManager {
         saveGuestInfo(context, deviceInfo?.guest)
         saveGreetingInfo(context, deviceInfo?.greeting)
         saveAllChannels(context, deviceInfo?.channel ?: emptyList())
+        saveHotelInfo(context, deviceInfo?.hotel)
+        saveAllRoutes(context, deviceInfo?.routes ?: emptyList())
     }
 
     fun getDeviceInfo(context: Context): com.itsthe1.webexoplayer.api.DeviceInfo {
@@ -98,7 +167,9 @@ object DeviceManager {
             room_number = prefs.getString(KEY_ROOM_NUMBER, null),
             guest = getGuestInfo(context),
             greeting = getGreetingInfo(context),
-            channel = getAllChannels(context)
+            channel = getAllChannels(context),
+            hotel = getHotelInfo(context),
+            routes = getAllRoutes(context)
         )
     }
 
@@ -251,9 +322,145 @@ object DeviceManager {
     // Debug function to print current channels
     fun debugPrintChannels(context: Context) {
         val channels = getAllChannels(context)
-        println("DEBUG: Found ${channels.size} channels in SharedPreferences:")
         channels.forEach { channel ->
             println("  - Channel ${channel.channel_number}: ${channel.channel_trans_name}")
+        }
+    }
+
+    fun saveHotelInfo(context: Context, hotelInfo: com.itsthe1.webexoplayer.api.HostelInfo?) {
+        val editor = getSharedPreferences(context).edit()
+        editor.putString(KEY_HOTEL_INFO_ID, hotelInfo?.hotel_id?.toString())
+        editor.putString(KEY_HOTEL_INFO_NAME, hotelInfo?.hotel_name)
+        editor.putString(KEY_HOTEL_INFO_LOGO, hotelInfo?.hotel_logo)
+        editor.putString(KEY_HOTEL_INFO_COVERS, hotelInfo?.hotel_covers)
+        editor.putString(KEY_HOTEL_INFO_INTRO, hotelInfo?.hotel_intro)
+        editor.putString(KEY_HOTEL_INFO_ABOUT, hotelInfo?.hotel_about)
+        editor.putString(KEY_HOTEL_INFO_ADDRESS, hotelInfo?.hotel_address)
+        editor.putString(KEY_HOTEL_INFO_SOCIAL, hotelInfo?.hotel_social)
+        editor.apply()
+    }
+
+    fun getHotelInfo(context: Context): com.itsthe1.webexoplayer.api.HostelInfo? {
+        val prefs = getSharedPreferences(context)
+        val hotelId = prefs.getString(KEY_HOTEL_INFO_ID, null)?.toIntOrNull()
+        val hotelName = prefs.getString(KEY_HOTEL_INFO_NAME, null)
+        val hotelLogo = prefs.getString(KEY_HOTEL_INFO_LOGO, null)
+        val hotelCovers = prefs.getString(KEY_HOTEL_INFO_COVERS, null)
+        val hotelIntro = prefs.getString(KEY_HOTEL_INFO_INTRO, null)
+        val hotelAbout = prefs.getString(KEY_HOTEL_INFO_ABOUT, null)
+        val hotelAddress = prefs.getString(KEY_HOTEL_INFO_ADDRESS, null)
+        val hotelSocial = prefs.getString(KEY_HOTEL_INFO_SOCIAL, null)
+        if (hotelId == null && hotelName == null && hotelLogo == null && hotelCovers == null && hotelIntro == null && hotelAbout == null && hotelAddress == null && hotelSocial == null) {
+            return null
+        }
+        return com.itsthe1.webexoplayer.api.HostelInfo(
+            hotel_id = hotelId,
+            hotel_name = hotelName,
+            hotel_logo = hotelLogo,
+            hotel_covers = hotelCovers,
+            hotel_intro = hotelIntro,
+            hotel_about = hotelAbout,
+            hotel_address = hotelAddress,
+            hotel_social = hotelSocial
+        )
+    }
+
+    fun getHotelLogo(context: Context): String? {
+        return getHotelInfo(context)?.hotel_logo
+    }
+
+    // Save all routes to SharedPreferences
+    fun saveAllRoutes(context: Context, routes: List<com.itsthe1.webexoplayer.api.RouteInfo>) {
+        val editor = getSharedPreferences(context).edit()
+        val gson = Gson()
+        val routesJson = gson.toJson(routes)
+        editor.putString(KEY_ALL_ROUTES, routesJson)
+        editor.apply()
+    }
+
+    // Get all routes from SharedPreferences
+    fun getAllRoutes(context: Context): List<com.itsthe1.webexoplayer.api.RouteInfo> {
+        val prefs = getSharedPreferences(context)
+        val routesJson = prefs.getString(KEY_ALL_ROUTES, null)
+        
+        return if (routesJson != null) {
+            try {
+                val gson = Gson()
+                val type = object : TypeToken<List<com.itsthe1.webexoplayer.api.RouteInfo>>() {}.type
+                gson.fromJson(routesJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    // Clear all routes from SharedPreferences
+    fun clearAllRoutes(context: Context) {
+        val editor = getSharedPreferences(context).edit()
+        editor.remove(KEY_ALL_ROUTES)
+        editor.apply()
+    }
+
+    // Debug function to print current routes
+    fun debugPrintRoutes(context: Context) {
+        val routes = getAllRoutes(context)
+        routes.forEach { route ->
+            println("  - Route ${route.route_id}: ${route.route_name} (${route.route_key})")
+        }
+    }
+
+    // Get routes by parent ID
+    fun getRoutesByParentId(context: Context, parentId: Int): List<com.itsthe1.webexoplayer.api.RouteInfo> {
+        val allRoutes = getAllRoutes(context)
+        return allRoutes.filter { route ->
+            route.route_parent_id == parentId
+        }
+    }
+
+    // Get child routes for route_id 5211 (HOME)
+    fun getHomeChildRoutes(context: Context): List<com.itsthe1.webexoplayer.api.RouteInfo> {
+        return getRoutesByParentId(context, 5211)
+    }
+
+    // Get routes by route key
+    fun getRoutesByKey(context: Context, routeKey: String): List<com.itsthe1.webexoplayer.api.RouteInfo> {
+        val allRoutes = getAllRoutes(context)
+        return allRoutes.filter { route ->
+            route.route_key == routeKey
+        }
+    }
+
+    // Get main routes (parent_id = 0)
+    fun getMainRoutes(context: Context): List<com.itsthe1.webexoplayer.api.RouteInfo> {
+        return getRoutesByParentId(context, 0)
+    }
+
+    // Get routes by parent route_key
+    fun getRoutesByParentKey(context: Context, parentKey: String): List<com.itsthe1.webexoplayer.api.RouteInfo> {
+        val allRoutes = getAllRoutes(context)
+        val parentRoute = allRoutes.find { it.route_key == parentKey }
+        val parentId = parentRoute?.route_id ?: return emptyList()
+        return allRoutes.filter { route ->
+            route.route_parent_id == parentId
+        }
+    }
+
+    // Fetch background image URL from route using routeKey
+    fun getRouteBackgroundImageByKey(context: Context, routeKey: String): String? {
+        val routes = getAllRoutes(context)
+        val route = routes.find { it.route_key == routeKey && (it.route_parent_id ?: 0) == 0 } ?: return null
+        val routeBgJson = route.route_bg ?: return null
+        try {
+            val gson = Gson()
+            val type = object : TypeToken<List<com.itsthe1.webexoplayer.api.RouteBackground>>() {}.type
+            val backgrounds: List<com.itsthe1.webexoplayer.api.RouteBackground> = gson.fromJson(routeBgJson, type) ?: return null
+            // Prefer active background where isActive == "true"
+            val activeBg = backgrounds.find { it.isActive == "true" }
+            return activeBg?.image ?: backgrounds.firstOrNull()?.image
+        } catch (e: Exception) {
+            return null
         }
     }
 } 

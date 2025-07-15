@@ -1,6 +1,7 @@
 package com.itsthe1.webexoplayer
 
 import HtmlText
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -179,6 +180,10 @@ class MainActivity : ComponentActivity() {
                                             val intent = Intent(this@MainActivity, PrayerTimesActivity::class.java)
                                             intent.putExtra("route_key", routeKey)
                                             startActivity(intent)
+                                        }
+                                        "KEY_CLEAR_DATA" -> {
+                                            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                                            activityManager.clearApplicationUserData()
                                         }
                                         else -> {
                                             val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)

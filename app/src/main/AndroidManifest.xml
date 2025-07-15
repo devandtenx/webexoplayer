@@ -3,9 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -22,9 +22,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WebExoPlayer"
         android:usesCleartextTraffic="true">
+
+        <!-- ✅ This is now the Launcher/Home activity -->
         <activity
             android:name=".ServerIpActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="">
+            
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
@@ -32,13 +37,16 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ✅ All other activities are regular -->
         <activity android:name=".MainActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.RoomSelectionActivity" />
         <activity android:name="com.itsthe1.webexoplayer.MenuDetailActivity" />
         <activity android:name="com.itsthe1.webexoplayer.YouTubeActivity" />
         <activity android:name="com.itsthe1.webexoplayer.TVActivity" />
         <activity android:name="com.itsthe1.webexoplayer.WorldClockActivity" />
         <activity android:name="com.itsthe1.webexoplayer.PrayerTimesActivity" />
-        
+
     </application>
 
 </manifest>

@@ -4,39 +4,50 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import com.itsthe1.webexoplayer.ui.theme.WebExoPlayerTheme
-import coil.compose.AsyncImage
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.remember
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import com.itsthe1.webexoplayer.TopAppBarCustom
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.itsthe1.webexoplayer.api.AccuWeatherRetrofitClient
+import com.itsthe1.webexoplayer.ui.theme.WebExoPlayerTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import retrofit2.awaitResponse
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.*
 
-// Data class for weather forecast
 data class WeatherForecast(
     val dayOfWeek: String,
     val date: String,
     val description: String,
-    val iconUrl: String, // URL for weather icon
+    val iconUrl: String,
     val highTemp: String,
     val lowTemp: String
 )
+
+// Helper to format date string
+fun formatDate(dateString: String): Pair<String, String> {
+    return try {
+        val parsedDate = LocalDate.parse(dateString.substring(0, 10))
+        val dayOfWeek = parsedDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH))
+        val formattedDate = parsedDate.format(DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH))
+        Pair(dayOfWeek, formattedDate)
+    } catch (e: Exception) {
+        Pair("Unknown", dateString)
+    }
+}
 
 @Composable
 fun WeatherCard(forecast: WeatherForecast) {
@@ -99,21 +110,52 @@ fun WeatherPage(forecasts: List<WeatherForecast>, route_key: String) {
     val bgImage = remember { DeviceManager.getRouteBackgroundImageByKey(context, route_key) }
     val bgImageUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Backgrounds/$bgImage"
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        // Background image
+    var accuweatherForecasts by remember { mutableStateOf<List<WeatherForecast>>(emptyList()) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            val apiKey = "GUmV0E5oB1FHtp238rxZ33HHyOmUKkK7"
+            val city = "Riyadh"
+            try {
+                val locationResponse = withContext(Dispatchers.IO) {
+                    AccuWeatherRetrofitClient.instance.getLocationKey(apiKey, city).execute()
+                }
+                val locationKey = locationResponse.body()?.firstOrNull()?.Key
+                if (locationKey != null) {
+                    val forecastResponse = withContext(Dispatchers.IO) {
+                        AccuWeatherRetrofitClient.instance.getFiveDayForecast(locationKey, apiKey).execute()
+                    }
+                    val forecastBody = forecastResponse.body()
+                    if (forecastBody != null) {
+                        accuweatherForecasts = forecastBody.DailyForecasts.map {
+                            val (dayOfWeekFormatted, dateFormatted) = formatDate(it.Date)
+                            WeatherForecast(
+                                dayOfWeek = dayOfWeekFormatted,
+                                date = dateFormatted,
+                                description = it.Day.IconPhrase,
+                                iconUrl = "https://developer.accuweather.com/sites/default/files/" + it.Day.Icon.toString().padStart(2, '0') + "-s.png",
+                                highTemp = "${it.Temperature.Maximum.Value}°${it.Temperature.Maximum.Unit}",
+                                lowTemp = "${it.Temperature.Minimum.Value}°${it.Temperature.Minimum.Unit}"
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // handle error if needed
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         AsyncImage(
             model = bgImageUrl,
             contentDescription = "Background",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        // Foreground content (weather UI)
         Column(
-            modifier = Modifier
-                .fillMaxSize(), // Overlay for readability
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TopAppBarCustom()
@@ -131,7 +173,15 @@ fun WeatherPage(forecasts: List<WeatherForecast>, route_key: String) {
                     .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
-                forecasts.forEach { forecast ->
+                val displayForecasts = if (accuweatherForecasts.isNotEmpty()) {
+                    accuweatherForecasts
+                } else {
+                    forecasts.map {
+                        val (dayOfWeekFormatted, dateFormatted) = formatDate(it.date)
+                        it.copy(dayOfWeek = dayOfWeekFormatted, date = dateFormatted)
+                    }
+                }
+                displayForecasts.forEach { forecast ->
                     WeatherCard(forecast)
                 }
             }
@@ -140,21 +190,65 @@ fun WeatherPage(forecasts: List<WeatherForecast>, route_key: String) {
 }
 
 class WeatherActivity : ComponentActivity() {
+    private val accuweatherApiKey = "GUmV0E5oB1FHtp238rxZ33HHyOmUKkK7"
+    private val defaultCity = "Riyadh"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val route_key = intent.getStringExtra("route_key") ?: "KEY_WEATHER"
-        val iconUrl = "http://192.168.56.1/one-tv/themes/default/default/weather/2.png"
-        val sampleForecasts = listOf(
-            WeatherForecast("Tuesday", "18 March", "Fog in the a.m.; mostly sunny", iconUrl, "28.5°", "18.6°"),
-            WeatherForecast("Wednesday", "19 March", "Sunny and delightful", iconUrl, "29.5°", "19.6°"),
-            WeatherForecast("Thursday", "20 March", "Sunny and very warm", iconUrl, "31.6°", "22.6°"),
-            WeatherForecast("Friday", "21 March", "Hot with plenty of sun", iconUrl, "33.6°", "24.9°"),
-            WeatherForecast("Saturday", "22 March", "Brilliant sunshine and hot", iconUrl, "34.3°", "25.1°")
-        )
         setContent {
             WebExoPlayerTheme {
-                WeatherPage(sampleForecasts, route_key) // Replace "your_route_key_here" with the actual route key
+                var forecasts by remember { mutableStateOf<List<WeatherForecast>>(emptyList()) }
+                var loading by remember { mutableStateOf(true) }
+                var error by remember { mutableStateOf<String?>(null) }
+
+                LaunchedEffect(Unit) {
+                    loading = true
+                    error = null
+                    try {
+                        val locationResponse = withContext(Dispatchers.IO) {
+                            AccuWeatherRetrofitClient.instance.getLocationKey(accuweatherApiKey, defaultCity).awaitResponse()
+                        }
+                        val locationKey = locationResponse.body()?.firstOrNull()?.Key
+                        if (locationKey != null) {
+                            val forecastResponse = withContext(Dispatchers.IO) {
+                                AccuWeatherRetrofitClient.instance.getFiveDayForecast(locationKey, accuweatherApiKey).awaitResponse()
+                            }
+                            val forecastBody = forecastResponse.body()
+                            if (forecastBody != null) {
+                                forecasts = forecastBody.DailyForecasts.map {
+                                    val (dayOfWeekFormatted, dateFormatted) = formatDate(it.Date)
+                                    WeatherForecast(
+                                        dayOfWeek = dayOfWeekFormatted,
+                                        date = dateFormatted,
+                                        description = it.Day.IconPhrase,
+                                        iconUrl = "https://developer.accuweather.com/sites/default/files/" + it.Day.Icon.toString().padStart(2, '0') + "-s.png",
+                                        highTemp = "${it.Temperature.Maximum.Value}°",
+                                        lowTemp = "${it.Temperature.Minimum.Value}°"
+                                    )
+                                }
+                            } else {
+                                error = "No forecast data."
+                            }
+                        } else {
+                            error = "No location key found."
+                        }
+                    } catch (e: Exception) {
+                        error = e.localizedMessage ?: "Unknown error"
+                    }
+                    loading = false
+                }
+
+                when {
+                    loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Loading weather...")
+                    }
+                    error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Error: $error")
+                    }
+                    else -> WeatherPage(forecasts, route_key)
+                }
             }
         }
     }
-} 
+}

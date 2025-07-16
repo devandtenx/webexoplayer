@@ -27,7 +27,8 @@ data class DeviceInfo(
     val greeting: GreetingInfo?,
     val channel: List<ChannelInfo>?,
     val hotel: HostelInfo?,
-    val routes: List<RouteInfo>?
+    val routes: List<RouteInfo>?,
+    val promotions: List<PromotionInfo>? = null
 )
 
 data class GuestInfo(
@@ -96,9 +97,27 @@ data class RouteInfo(
     val hotel_id: Int?,
     val language_id: Int?,
     val child_routes: List<RouteInfo>?
+
 )
 
 data class RouteBackground(
     val image: String?,
     val isActive: String?
+)
+
+data class PromotionInfo(
+    val promotion_id: Int?,
+    val promotion_title: String?,
+    val promotion_src: String?,
+    val promotion_link: String?,
+    val promotion_delay: Int?,
+    val promotion_status: Int?,
+    val display_order: Int?,
+    val translation_of: Int?,
+    val promo_type_id: Int?,
+    val promo_holder_id: Int?,
+    val app_id: Int?,
+    val hotel_id: Int?,
+    val language_id: Int?,
+    val promo_playlist_id: Int?
 )

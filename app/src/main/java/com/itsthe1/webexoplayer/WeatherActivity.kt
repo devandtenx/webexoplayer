@@ -27,6 +27,8 @@ import retrofit2.awaitResponse
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.WbSunny
 
 data class WeatherForecast(
     val dayOfWeek: String,
@@ -241,7 +243,16 @@ class WeatherActivity : ComponentActivity() {
 
                 when {
                     loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Loading weather...")
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.WbSunny,
+                                contentDescription = "Weather Logo",
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.size(80.dp)
+                            )
+                            Spacer(Modifier.height(24.dp))
+                            CircularProgressIndicator(color = Color.White)
+                        }
                     }
                     error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("Error: $error")

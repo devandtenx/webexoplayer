@@ -59,6 +59,7 @@ object DeviceManager {
     private const val KEY_HOTEL_INFO_ADDRESS = "hotel_info_address"
     private const val KEY_HOTEL_INFO_SOCIAL = "hotel_info_social"
     private const val KEY_ALL_ROUTES = "all_routes"
+    private const val KEY_ALL_PROMOTIONS = "all_promotions"
     
     // Server configuration keys
     private const val KEY_SERVER_URL = "server_url"
@@ -145,6 +146,7 @@ object DeviceManager {
         saveAllChannels(context, deviceInfo?.channel ?: emptyList())
         saveHotelInfo(context, deviceInfo?.hotel)
         saveAllRoutes(context, deviceInfo?.routes ?: emptyList())
+        saveAllPromotions(context, deviceInfo?.promotions ?: emptyList())
     }
 
     fun getDeviceInfo(context: Context): com.itsthe1.webexoplayer.api.DeviceInfo {
@@ -169,7 +171,8 @@ object DeviceManager {
             greeting = getGreetingInfo(context),
             channel = getAllChannels(context),
             hotel = getHotelInfo(context),
-            routes = getAllRoutes(context)
+            routes = getAllRoutes(context),
+            promotions = getAllPromotions(context)
         )
     }
 
@@ -401,6 +404,37 @@ object DeviceManager {
         val editor = getSharedPreferences(context).edit()
         editor.remove(KEY_ALL_ROUTES)
         editor.apply()
+    }
+
+    // Save all promotions to SharedPreferences
+    fun saveAllPromotions(context: Context, promotions: List<com.itsthe1.webexoplayer.api.PromotionInfo>) {
+        val editor = getSharedPreferences(context).edit()
+        val gson = Gson()
+        val promotionsJson = gson.toJson(promotions)
+        editor.putString(KEY_ALL_PROMOTIONS, promotionsJson)
+        editor.apply()
+    }
+
+    // Get all promotions from SharedPreferences
+    fun getAllPromotions(context: Context): List<com.itsthe1.webexoplayer.api.PromotionInfo> {
+        val prefs = getSharedPreferences(context)
+        val promotionsJson = prefs.getString(KEY_ALL_PROMOTIONS, null)
+        return if (promotionsJson != null) {
+            try {
+                val gson = Gson()
+                val type = object : TypeToken<List<com.itsthe1.webexoplayer.api.PromotionInfo>>() {}.type
+                gson.fromJson(promotionsJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    // Clear all data from SharedPreferences
+    fun clearAll(context: Context) {
+        getSharedPreferences(context).edit().clear().apply()
     }
 
     // Debug function to print current routes

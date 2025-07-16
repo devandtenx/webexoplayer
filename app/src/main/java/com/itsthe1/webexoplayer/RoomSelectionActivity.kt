@@ -195,6 +195,10 @@ fun RoomSelectionScreen(onRoomSelected: (String, String, String) -> Unit) {
     var isPressed by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
+    // Add state for Change Server IP button
+    var isChangeServerIpPressed by remember { mutableStateOf(false) }
+    var isChangeServerIpFocused by remember { mutableStateOf(false) }
+    val changeServerIpFocusRequester = remember { FocusRequester() }
 
     // Get Android device ID
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -252,33 +256,7 @@ fun RoomSelectionScreen(onRoomSelected: (String, String, String) -> Unit) {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Logo
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "10",
-                            color = Color(0xFFFF2D2D),
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 54.sp
-                        )
-                        Text(
-                            text = "X",
-                            color = Color.White,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 54.sp
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "TECHNOLOGIES",
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(36.dp))
+                    
 
                     // Welcome Text
                     Text(
@@ -352,61 +330,119 @@ fun RoomSelectionScreen(onRoomSelected: (String, String, String) -> Unit) {
                             .padding(6.dp)
                     )
 
-                    // Continue Button
+                    // Continue and Change Server IP Buttons in a Row
                     Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = {
-                            if (roomNumber.isNotBlank()) {
-                                isPressed = true
-                                onRoomSelected(roomNumber, androidId, macAddress)
-                            } else {
-                                isError = true
-                                isPressed = false
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .focusRequester(focusRequester)
-                            .onFocusChanged { isFocused = it.isFocused }
-                            .focusable(),
-                        shape = RoundedCornerShape(32.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent
-                        ),
-                        contentPadding = PaddingValues()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Box(
+                        
+                        // Change Server IP Button
+                        Button(
+                            onClick = {
+                                isChangeServerIpPressed = true
+                                DeviceManager.clearAll(context)
+                                val activity = context as? android.app.Activity
+                                activity?.let {
+                                    val intent = Intent(it, ServerIpActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    it.startActivity(intent)
+                                    it.finish()
+                                }
+                            },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    brush = if (isPressed)
-                                        Brush.horizontalGradient(
-                                            colors = listOf(Color(0xFFFFC107), Color(0xFFFF8A00))
-                                        )
-                                    else
-                                        Brush.horizontalGradient(
-                                            colors = listOf(Color(0xFFFF8A00), Color(0xFFFFC107))
-                                        ),
-                                    shape = RoundedCornerShape(32.dp)
-                                )
-                                .then(
-                                    if (isFocused)
-                                        Modifier.border(
-                                            width = 4.dp,
-                                            color = Color.White,
-                                            shape = RoundedCornerShape(32.dp)
-                                        )
-                                    else Modifier
-                                ),
-                            contentAlignment = Alignment.Center
+                                .weight(1f)
+                                .height(64.dp)
+                                .focusRequester(changeServerIpFocusRequester)
+                                .onFocusChanged { isChangeServerIpFocused = it.isFocused }
+                                .focusable(),
+                            shape = RoundedCornerShape(32.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent
+                            ),
+                            contentPadding = PaddingValues()
                         ) {
-                            Text(
-                                text = "Continue",
-                                color = Color.Black,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        color = Color(0xFFFF5252),
+                                        shape = RoundedCornerShape(32.dp)
+                                    )
+                                    .then(
+                                        if (isChangeServerIpFocused)
+                                            Modifier.border(
+                                                width = 4.dp,
+                                                color = Color.White,
+                                                shape = RoundedCornerShape(32.dp)
+                                            )
+                                        else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Change Server IP",
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        // Continue Button
+                        Button(
+                            onClick = {
+                                if (roomNumber.isNotBlank()) {
+                                    isPressed = true
+                                    onRoomSelected(roomNumber, androidId, macAddress)
+                                } else {
+                                    isError = true
+                                    isPressed = false
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(64.dp)
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { isFocused = it.isFocused }
+                                .focusable(),
+                            shape = RoundedCornerShape(32.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent
+                            ),
+                            contentPadding = PaddingValues()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = if (isPressed)
+                                            Brush.horizontalGradient(
+                                                colors = listOf(Color(0xFFFFC107), Color(0xFFFF8A00))
+                                            )
+                                        else
+                                            Brush.horizontalGradient(
+                                                colors = listOf(Color(0xFFFF8A00), Color(0xFFFFC107))
+                                            ),
+                                        shape = RoundedCornerShape(32.dp)
+                                    )
+                                    .then(
+                                        if (isFocused)
+                                            Modifier.border(
+                                                width = 4.dp,
+                                                color = Color.White,
+                                                shape = RoundedCornerShape(32.dp)
+                                            )
+                                        else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Continue",
+                                    color = Color.Black,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }

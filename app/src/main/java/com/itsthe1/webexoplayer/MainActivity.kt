@@ -1,6 +1,7 @@
 package com.itsthe1.webexoplayer
 
 import HtmlText
+import android.app.ActivityManager
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -47,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.foundation.lazy.itemsIndexed
 import android.content.Intent
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalContext
@@ -64,9 +66,14 @@ import androidx.compose.ui.text.style.TextAlign
 import coil.ImageLoader
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
+import com.itsthe1.webexoplayer.api.RetrofitClient
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.LaunchedEffect
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.N)
@@ -74,8 +81,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        
         setContent {
+            val showLoader = remember { mutableStateOf(false) }
+            val refreshTrigger = remember { mutableStateOf(0) } // Add refresh trigger
             WebExoPlayerTheme {
                 TvSurface(
                     modifier = Modifier.fillMaxSize(),
@@ -145,16 +153,7 @@ class MainActivity : ComponentActivity() {
                                             .padding(16.dp)
                                             .verticalScroll(rememberScrollState())
                                     ) {
-                                        Text(
-                                            text = "Routes (Parent ID: 5211)",
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            textAlign = TextAlign.Center
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        RoutesDisplay()
+                                        PromotionsCarousel(refreshKey = refreshTrigger.value)
                                     }
                                 }
                             }
@@ -163,10 +162,6 @@ class MainActivity : ComponentActivity() {
                             TVMenuRow(
                                 onMenuSelected = { _, routeKey ->
                                     when (routeKey) {
-                                        "KEY_YOUTUBE" -> {
-                                            val intent = Intent(this@MainActivity, YouTubeActivity::class.java)
-                                            startActivity(intent)
-                                        }
                                         "KEY_XTV" -> {
                                             val intent = Intent(this@MainActivity, TVActivity::class.java)
                                             startActivity(intent)
@@ -182,17 +177,85 @@ class MainActivity : ComponentActivity() {
                                             startActivity(intent)
                                         }
                                         "KEY_CLEAR_DATA" -> {
-                                            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                                            val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
                                             activityManager.clearApplicationUserData()
                                         }
-                                        else -> {
-                                            val intent = Intent(this@MainActivity, MenuDetailActivity::class.java)
+                                        "KEY_WEATHER" -> {
+                                            val intent = Intent(this@MainActivity, WeatherActivity::class.java)
                                             intent.putExtra("route_key", routeKey)
                                             startActivity(intent)
                                         }
+                                        "KEY_UPDATE" -> {
+                                            val context = this@MainActivity
+                                            val showLoaderState = showLoader
+                                            val deviceUid = DeviceManager.getDeviceInfo(context).device_uid
+                                            if (deviceUid.isNullOrBlank()) {
+                                                Toast.makeText(context, "Device UID not found.", Toast.LENGTH_SHORT).show()
+                                                return@TVMenuRow
+                                            }
+                                            showLoaderState.value = true
+                                            // Use coroutine for network call
+                                            lifecycleScope.launch {
+                                                try {
+                                                    val response = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                        com.itsthe1.webexoplayer.api.RetrofitClient.instance.lookupDeviceById(deviceUid).execute()
+                                                    }
+                                                    if (response.isSuccessful && response.body()?.success == true) {
+                                                        val deviceInfo = response.body()?.device
+                                                        DeviceManager.saveDeviceInfo(context, deviceInfo)
+                                                        Toast.makeText(context, "Device data updated!", Toast.LENGTH_SHORT).show()
+                                                        refreshTrigger.value++ // Trigger UI refresh
+                                                    } else {
+                                                        Toast.makeText(context, "Failed to update device data.", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                                } finally {
+                                                    showLoaderState.value = false
+                                                }
+                                            }
+                                        }
+                                        "KEY_ATTRACTIONS"->{
+                                            val intent = Intent(this@MainActivity, AttractionsActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
+                                        else -> {
+                                            val context = this@MainActivity
+                                            val routes = DeviceManager.getRoutesByParentKey(context, "KEY_HOME")
+                                            val route = routes.find { it.route_key?.equals(routeKey, ignoreCase = true) == true }
+                                        
+                                            val routePkg = route?.route_key?.trim() ?: ""
+                                            val className = route?.route_attr?.trim() ?: ""
+                                        
+                                            if (routePkg.isNotEmpty() && className.isNotEmpty()) {
+                                                val intent = Intent().apply {
+                                                    setClassName(routePkg, className)
+                                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                }
+                                        
+                                                try {
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "App cannot be launched:\n$routePkg/$className",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            } else {
+                                                val intent = Intent(context, MenuDetailActivity::class.java)
+                                                intent.putExtra("route_key", routeKey)
+                                                context.startActivity(intent)
+                                            }
+                                        }
+                                        
+                                        
+                                        
                                     }
                                 },
-                                initialSelectedIndex = 0
+                                initialSelectedIndex = 0,
+                                refreshKey = refreshTrigger.value // Pass refreshKey
                             )
                         }
                     }
@@ -326,9 +389,10 @@ fun MenuButtonWithImage(label: String, routeIcon: String?, selected: Boolean, on
 @Composable
 fun TVMenuRow(
     onMenuSelected: (Int, String) -> Unit, // Now passes route_key
-    initialSelectedIndex: Int = 0
+    initialSelectedIndex: Int = 0,
+    refreshKey: Int = 0 // Add refreshKey parameter
 ) {
-    var selectedIndex by remember { mutableStateOf(initialSelectedIndex) }
+    var selectedIndex by remember(refreshKey) { mutableStateOf(initialSelectedIndex) }
     
     val context = LocalContext.current
     val routes = DeviceManager.getRoutesByParentKey(context, "KEY_HOME")
@@ -424,56 +488,42 @@ fun TestImageButton() {
     }
 }
 
-
 @Composable
-fun RoutesDisplay() {
+fun PromotionsCarousel(refreshKey: Int = 0) {
     val context = LocalContext.current
-    val routes = DeviceManager.getRoutesByParentId(context, 5211)
-    
-    
-    if (routes.isEmpty()) {
+    val promotions = DeviceManager.getAllPromotions(context)
+    var currentIndex by remember(refreshKey) { mutableStateOf(0) }
+
+    if (promotions.isEmpty()) {
         Text(
-            text = "No routes found for parent ID 5211",
+            text = "No promotions available.",
             color = Color.Gray,
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center
         )
     } else {
-        routes.forEach { route ->
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Text(
-                    text = "• ${route.route_name ?: "Unknown"} (ID: ${route.route_id})",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium
-                )
-                if (route.route_key != null) {
-                    Text(
-                        text = "  Key: ${route.route_key}",
-                        color = Color.Gray,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                if (route.route_icon != null) {
-                    Text(
-                        text = "  Icon: ${route.route_icon}",
-                        color = Color.Yellow,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                if (route.route_callback != null) {
-                    Text(
-                        text = "  Callback: ${route.route_callback}",
-                        color = Color.Gray,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-            }
+        val currentPromotion = promotions[currentIndex]
+        val imageUrl = "http://192.168.56.1/admin-portal/assets/uploads/Promotions/Images/${currentPromotion.promotion_src}"
+        val delayMillis = (currentPromotion.promotion_delay ?: 3) * 1000L
+
+        LaunchedEffect(currentIndex, refreshKey) {
+            kotlinx.coroutines.delay(delayMillis)
+            currentIndex = (currentIndex + 1) % promotions.size
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            AsyncImage(
+    model = imageUrl,
+    contentDescription = currentPromotion.promotion_title ?: "Promotion",
+    modifier = Modifier.fillMaxSize(),
+    contentScale = ContentScale.Crop
+)
         }
     }
 }
@@ -486,5 +536,21 @@ fun createImageLoader(context: android.content.Context): ImageLoader {
                 add(SvgDecoder.Factory())
             }
             .build()
+    }
+}
+
+@Composable
+fun LoaderDialog(show: Boolean, onDismiss: () -> Unit = {}) {
+    if (show) {
+        Dialog(onDismissRequest = onDismiss) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        }
     }
 }

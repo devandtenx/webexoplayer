@@ -1,16 +1,13 @@
 package com.itsthe1.webexoplayer
 
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,7 +15,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -51,10 +46,21 @@ import coil.compose.AsyncImage
 import com.itsthe1.webexoplayer.api.ChannelInfo
 import com.itsthe1.webexoplayer.ui.theme.WebExoPlayerTheme
 import kotlinx.coroutines.delay
-import org.videolan.libvlc.LibVLC
-import org.videolan.libvlc.Media
-import org.videolan.libvlc.MediaPlayer
-import org.videolan.libvlc.util.VLCVideoLayout
+import xyz.doikki.videocontroller.StandardVideoController
+import xyz.doikki.videoplayer.player.VideoView
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material3.Icon
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
+import xyz.doikki.videoplayer.ijk.IjkPlayerFactory
+import android.content.Context
+import android.net.wifi.WifiManager
 
 // Data class for channel (local UI model)
 data class Channel(
@@ -260,39 +266,38 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
     val currentChannel = channelList.getOrNull(currentIndex)
     var visible by remember { mutableStateOf(true) }
     val focusRequester = remember { FocusRequester() }
+    var isPlaying by remember { mutableStateOf(true) }
+    var showControls by remember { mutableStateOf(false) }
+    var selectedControlIndex by remember { mutableStateOf(1) } // 0=Prev, 1=Play/Pause, 2=Next, 3=Go Live
+    val controlRequesters = remember { List(4) { FocusRequester() } }
+    var videoViewRef by remember { mutableStateOf<VideoView?>(null) }
+    // MulticastLock for UDP
+    var multicastLock by remember { mutableStateOf<WifiManager.MulticastLock?>(null) }
 
-        val vlcInstance = remember {
-            try {
-                LibVLC(context, mutableListOf("--no-drop-late-frames", "--no-skip-frames", "--rtsp-tcp"))
-            } catch (e: Exception) {
-                Log.e("VLC", "Failed to create LibVLC: ${e.message}", e)
-                throw e
+    // Acquire MulticastLock when playing UDP, release when not
+    LaunchedEffect(currentChannel?.streamUrl, isPlaying) {
+        val isUdp = currentChannel?.streamUrl?.startsWith("udp://") == true
+        if (isUdp && isPlaying) {
+            if (multicastLock == null) {
+                val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                multicastLock = wifiManager?.createMulticastLock("webexoplayer-udp")?.apply {
+                    setReferenceCounted(true)
+                    acquire()
+                }
             }
-        }
-
-    val mediaPlayer = remember { MediaPlayer(vlcInstance) }
-
-    LaunchedEffect(currentIndex) {
-        val channel = channelList.getOrNull(currentIndex)
-        if (!channel?.streamUrl.isNullOrBlank()) {
-            try {
-                mediaPlayer.stop()
-                val media = Media(vlcInstance, Uri.parse(channel!!.streamUrl))
-                media.addOption(":network-caching=300")
-                mediaPlayer.media = media
-                media.release()
-                mediaPlayer.play()
-            } catch (e: Exception) {
-                Log.e("VLC", "Error: ${e.message}", e)
+        } else {
+            multicastLock?.let {
+                if (it.isHeld) it.release()
+                multicastLock = null
             }
         }
     }
-
-    DisposableEffect(mediaPlayer) {
+    DisposableEffect(currentChannel?.streamUrl) {
         onDispose {
-            mediaPlayer.stop()
-            mediaPlayer.release()
-            vlcInstance.release()
+            multicastLock?.let {
+                if (it.isHeld) it.release()
+                multicastLock = null
+            }
         }
     }
 
@@ -300,51 +305,269 @@ fun ChannelDetailScreen(index: Int, navController: NavController) {
         visible = true
         delay(2000)
         visible = false
+        isPlaying = true // auto-play on channel change
+        showControls = false
+        selectedControlIndex = 1 // default to Play/Pause
+    }
+
+    // Hide controls after 2 seconds when resuming playback
+    LaunchedEffect(isPlaying) {
+        if (isPlaying && showControls) {
+            delay(2000)
+            showControls = false
+        }
+    }
+
+    // Request focus for the selected control when controls are shown
+    LaunchedEffect(showControls, selectedControlIndex) {
+        if (showControls) {
+            controlRequesters[selectedControlIndex].requestFocus()
+        }
     }
 
     Box(
         modifier = Modifier.fillMaxSize().background(Color.Black).focusRequester(focusRequester).focusable()
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
-                    when (event.key) {
-                        Key.DirectionRight -> { currentIndex = (currentIndex + 1) % channelList.size; true }
-                        Key.DirectionLeft -> { currentIndex = if (currentIndex - 1 >= 0) currentIndex - 1 else channelList.lastIndex; true }
-                        Key.Back -> {
-                            navController.popBackStack()
-                            navController.navigate("channelGrid?selectedIndex=$currentIndex")
-                            true
+                    if (showControls) {
+                        when (event.key) {
+                            Key.DirectionRight -> {
+                                selectedControlIndex = (selectedControlIndex + 1) % 4
+                                true
+                            }
+                            Key.DirectionLeft -> {
+                                selectedControlIndex = (selectedControlIndex + 3) % 4
+                                true
+                            }
+                            Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> {
+                                when (selectedControlIndex) {
+                                    0 -> { // Prev
+                                        currentIndex = if (currentIndex - 1 >= 0) currentIndex - 1 else channelList.lastIndex
+                                        showControls = true
+                                    }
+                                    1 -> { // Play/Pause
+                                        isPlaying = !isPlaying
+                                        showControls = true
+                                    }
+                                    2 -> { // Next
+                                        currentIndex = (currentIndex + 1) % channelList.size
+                                        showControls = true
+                                    }
+                                    3 -> { // Go Live
+                                        currentIndex = channelList.lastIndex
+                                        isPlaying = true
+                                        showControls = true
+                                    }
+                                }
+                                true
+                            }
+                            Key.Back -> {
+                                showControls = false
+                                true
+                            }
+                            else -> false
                         }
-                        else -> false
+                    } else {
+                        when (event.key) {
+                            Key.DirectionRight -> { currentIndex = (currentIndex + 1) % channelList.size; true }
+                            Key.DirectionLeft -> { currentIndex = if (currentIndex - 1 >= 0) currentIndex - 1 else channelList.lastIndex; true }
+                            Key.Back -> {
+                                navController.popBackStack()
+                                navController.navigate("channelGrid?selectedIndex=$currentIndex")
+                                true
+                            }
+                            Key.Enter, Key.NumPadEnter, Key.DirectionCenter -> {
+                                showControls = true
+                                true
+                            }
+                            else -> false
+                        }
                     }
                 } else false
             }
     ) {
-        currentChannel?.streamUrl?.let {
+        currentChannel?.streamUrl?.let { streamUrl ->
             key(currentIndex) {
                 AndroidView(
-                    factory = {
-                        VLCVideoLayout(context).also { layout ->
-                            // Detach any existing views before re-attaching
-                            try {
-                                mediaPlayer.detachViews()
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-            
-                            mediaPlayer.attachViews(layout, null, false, false)
-            
-                            layout.layoutParams = android.view.ViewGroup.LayoutParams(
-                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                            )
+                    factory = { ctx ->
+                        val videoView = VideoView(ctx)
+                        val controller = StandardVideoController(ctx)
+                        controller.addDefaultControlComponent(currentChannel.name, false)
+                        videoView.setVideoController(controller)
+                        if (streamUrl.startsWith("udp://")) {
+                            videoView.setPlayerFactory(IjkPlayerFactory.create())
                         }
+                        videoView.setUrl(streamUrl)
+                        videoView.start()
+                        videoViewRef = videoView // store reference
+                        videoView
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    update = { videoView ->
+                        videoViewRef = videoView // update reference
+                        if (isPlaying) {
+                            videoView.start()
+                        } else {
+                            videoView.pause()
+                        }
+                    }
                 )
             }
         } ?: run {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No Stream Available", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // Show controls overlay when paused or when showControls is true
+        AnimatedVisibility(
+            visible = showControls || !isPlaying,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xAA222222), RoundedCornerShape(32.dp))
+                    .padding(vertical = 8.dp, horizontal = 32.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Previous Channel
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            currentIndex = if (currentIndex - 1 >= 0) currentIndex - 1 else channelList.lastIndex
+                            showControls = true
+                        },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .focusRequester(controlRequesters[0])
+                            .onFocusChanged { }
+                            .then(
+                                if (selectedControlIndex == 0) {
+                                    val scale by animateFloatAsState(targetValue = 1.15f)
+                                    Modifier
+                                        .scale(scale)
+                                        .shadow(20.dp, CircleShape, ambientColor = Color(0xFF2196F3), spotColor = Color(0xFF2196F3))
+                                        .background(Color(0x552196F3), CircleShape)
+                                } else {
+                                    val scale by animateFloatAsState(targetValue = 1f)
+                                    Modifier.scale(scale)
+                                }
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.SkipPrevious,
+                            contentDescription = "Previous Channel",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    // Play/Pause
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            isPlaying = !isPlaying
+                            showControls = true
+                        },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .focusRequester(controlRequesters[1])
+                            .onFocusChanged { }
+                            .then(
+                                if (selectedControlIndex == 1) {
+                                    val scale by animateFloatAsState(targetValue = 1.15f)
+                                    Modifier
+                                        .scale(scale)
+                                        .shadow(20.dp, CircleShape, ambientColor = Color(0xFF2196F3), spotColor = Color(0xFF2196F3))
+                                        .background(Color(0x552196F3), CircleShape)
+                                } else {
+                                    val scale by animateFloatAsState(targetValue = 1f)
+                                    Modifier.scale(scale)
+                                }
+                            )
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    // Next Channel
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            currentIndex = (currentIndex + 1) % channelList.size
+                            showControls = true
+                        },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .focusRequester(controlRequesters[2])
+                            .onFocusChanged { }
+                            .then(
+                                if (selectedControlIndex == 2) {
+                                    val scale by animateFloatAsState(targetValue = 1.15f)
+                                    Modifier
+                                        .scale(scale)
+                                        .shadow(20.dp, CircleShape, ambientColor = Color(0xFF2196F3), spotColor = Color(0xFF2196F3))
+                                        .background(Color(0x552196F3), CircleShape)
+                                } else {
+                                    val scale by animateFloatAsState(targetValue = 1f)
+                                    Modifier.scale(scale)
+                                }
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.SkipNext,
+                            contentDescription = "Next Channel",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    // Go Live (seek to live edge)
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            videoViewRef?.let { player ->
+                                val duration = player.duration
+                                val currentPosition = player.currentPosition
+                                Log.d("TVActivity", "Go Live: duration=$duration, currentPosition=$currentPosition")
+                                if (duration > 0) {
+                                    player.seekTo(duration)
+                                    isPlaying = true
+                                } else {
+                                    Toast.makeText(context, "Go Live not supported for this channel.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            showControls = true
+                        },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .focusRequester(controlRequesters[3])
+                            .onFocusChanged { }
+                            .then(
+                                if (selectedControlIndex == 3) {
+                                    val scale by animateFloatAsState(targetValue = 1.15f)
+                                    Modifier
+                                        .scale(scale)
+                                        .shadow(20.dp, CircleShape, ambientColor = Color(0xFF2196F3), spotColor = Color(0xFF2196F3))
+                                        .background(Color(0x552196F3), CircleShape)
+                                } else {
+                                    val scale by animateFloatAsState(targetValue = 1f)
+                                    Modifier.scale(scale)
+                                }
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.LiveTv,
+                            contentDescription = "Go Live",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
             }
         }
 

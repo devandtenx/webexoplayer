@@ -27,7 +27,9 @@ data class DeviceInfo(
     val greeting: GreetingInfo?,
     val channel: List<ChannelInfo>?,
     val hotel: HostelInfo?,
-    val routes: List<RouteInfo>?
+    val routes: List<RouteInfo>?,
+    val promotions: List<PromotionInfo>? = null,
+    val attractions: List<AttractionInfo>? = null
 )
 
 data class GuestInfo(
@@ -96,9 +98,49 @@ data class RouteInfo(
     val hotel_id: Int?,
     val language_id: Int?,
     val child_routes: List<RouteInfo>?
+
 )
 
 data class RouteBackground(
     val image: String?,
     val isActive: String?
+)
+
+data class PromotionInfo(
+    val promotion_id: Int?,
+    val promotion_title: String?,
+    val promotion_src: String?,
+    val promotion_link: String?,
+    val promotion_delay: Int?,
+    val promotion_status: Int?,
+    val display_order: Int?,
+    val translation_of: Int?,
+    val promo_type_id: Int?,
+    val promo_holder_id: Int?,
+    val app_id: Int?,
+    val hotel_id: Int?,
+    val language_id: Int?,
+    val promo_playlist_id: Int?
+)
+
+data class AttractionInfo(
+    val attraction_id: Int?,
+    val attraction_icon: String?,
+    val attraction_name: String?,
+    val attraction_subtitle: String?,
+    val attraction_slogan: String?,
+    val attraction_slider: String?, // JSON string or List<List<String>> if you want to parse
+    val attraction_intro: String?,
+    val attraction_expire_date: String?,
+    val is_bookable: Int?,
+    val display_order: Int?,
+    val translation_of: Int?,
+    val hotel_id: Int?,
+    val language_id: Int?,
+    val deleted: Int?,
+    val deleted_by: String?,
+    val created_on: String?,
+    val created_by: String?,
+    val modified_on: String?,
+    val modified_by: String?
 )

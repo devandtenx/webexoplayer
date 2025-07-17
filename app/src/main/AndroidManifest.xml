@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
@@ -46,6 +47,8 @@
         <activity android:name="com.itsthe1.webexoplayer.TVActivity" />
         <activity android:name="com.itsthe1.webexoplayer.WorldClockActivity" />
         <activity android:name="com.itsthe1.webexoplayer.PrayerTimesActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.WeatherActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.AttractionsActivity" />
 
     </application>
 

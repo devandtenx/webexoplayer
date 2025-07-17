@@ -38,7 +38,7 @@ import coil.compose.AsyncImage
 class WorldClockActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-         val route_key = intent.getStringExtra("route_key") ?: "world_clock"
+         val route_key = intent.getStringExtra("route_key") ?: "KEY_WORLD_CLOCK"
         setContent {
             WebExoPlayerTheme {
                 val bgImage = remember {

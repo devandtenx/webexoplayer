@@ -31,24 +31,31 @@ import androidx.compose.ui.input.key.*
 class ServerIpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-    
+
+        var showLoader = false
         if (DeviceManager.hasServerConfiguration(this)) {
+            showLoader = true
             // Delay the redirect by at least 1000ms
             android.os.Handler(mainLooper).postDelayed({
                 val intent = Intent(this, RoomSelectionActivity::class.java)
                 startActivity(intent)
                 finish()
             }, 1000)
-        } else {
-            setContent {
-                WebExoPlayerTheme {
+        }
+        setContent {
+            WebExoPlayerTheme {
+                var loaderVisible by remember { mutableStateOf(showLoader) }
+                // If loaderVisible is true, show loader, else show ServerIpScreen
+                if (loaderVisible) {
+                    LoaderScreen()
+                } else {
                     ServerIpScreen(
                         onSubmit = { url, resolution, appId, resolutionValue ->
                             var fixedUrl = url.trim()
                             if (!fixedUrl.startsWith("http://") && !fixedUrl.startsWith("https://")) {
                                 fixedUrl = "http://$fixedUrl"
                             }
-    
+
                             DeviceManager.saveServerConfiguration(
                                 context = this@ServerIpActivity,
                                 serverUrl = fixedUrl,
@@ -56,13 +63,13 @@ class ServerIpActivity : ComponentActivity() {
                                 appId = appId,
                                 resolutionValue = resolutionValue
                             )
-    
+
                             android.widget.Toast.makeText(
                                 this@ServerIpActivity,
                                 "Server details saved successfully!",
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
-    
+
                             val intent = Intent(this@ServerIpActivity, RoomSelectionActivity::class.java)
                             startActivity(intent)
                             finish()
@@ -72,7 +79,7 @@ class ServerIpActivity : ComponentActivity() {
             }
         }
     }
-    
+
 }
 
 @Composable
@@ -91,6 +98,19 @@ fun ServerIpScreen(
 
     val resolutionFocusStates = remember { resolutionOptions.map { mutableStateOf(false) } }
     val appFocusStates = remember { appOptions.map { mutableStateOf(false) } }
+
+    // Add for button focus
+    val buttonFocusRequester = remember { FocusRequester() }
+    var isButtonFocused by remember { mutableStateOf(false) }
+
+    // Add FocusRequesters for radio options
+    val resolutionFocusRequesters = remember { resolutionOptions.map { FocusRequester() } }
+    val appFocusRequesters = remember { appOptions.map { FocusRequester() } }
+
+    // Optionally, request focus for the first option for testing
+    LaunchedEffect(Unit) {
+        resolutionFocusRequesters[0].requestFocus()
+    }
 
     Box(
         modifier = Modifier
@@ -188,9 +208,11 @@ fun ServerIpScreen(
                         resolutionOptions.forEachIndexed { index, res ->
                             val isFocused = resolutionFocusStates[index]
                             val interactionSource = remember { MutableInteractionSource() }
+                            val focusRequester = resolutionFocusRequesters[index]
 
                             Box(
                                 modifier = Modifier
+                                    .focusRequester(focusRequester)
                                     .focusable(true, interactionSource = interactionSource)
                                     .onFocusChanged { focusState ->
                                         isFocused.value = focusState.isFocused
@@ -203,7 +225,7 @@ fun ServerIpScreen(
                                     }
                                     .border(
                                         width = 2.dp,
-                                        color = if (isFocused.value) Color(0xFFFFA000) else Color.Transparent,
+                                        color = if (isFocused.value) Color.White else Color.Transparent,
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -242,9 +264,11 @@ fun ServerIpScreen(
                         appOptions.forEachIndexed { index, (id, name) ->
                             val isFocused = appFocusStates[index]
                             val interactionSource = remember { MutableInteractionSource() }
+                            val focusRequester = appFocusRequesters[index]
 
                             Box(
                                 modifier = Modifier
+                                    .focusRequester(focusRequester)
                                     .focusable(true, interactionSource = interactionSource)
                                     .onFocusChanged { focusState ->
                                         isFocused.value = focusState.isFocused
@@ -257,7 +281,7 @@ fun ServerIpScreen(
                                     }
                                     .border(
                                         width = 2.dp,
-                                        color = if (isFocused.value) Color(0xFFFFA000) else Color.Transparent,
+                                        color = if (isFocused.value) Color.White else Color.Transparent,
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -279,41 +303,73 @@ fun ServerIpScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = {
-                            if (url.isNotBlank()) {
-                                onSubmit?.invoke(
-                                    url,
-                                    selectedResolution,
-                                    selectedAppId,
-                                    if (selectedResolution == "720p") 720 else 1080
-                                )
-                            } else {
-                                isError = true
-                            }
-                        },
+                    // Wrap the Button in a Box to apply border on focus
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        enabled = url.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (url.isNotBlank()) Color(0xFFFFA000) else Color.Gray,
-                            contentColor = Color.White
-                        )
+                            .height(56.dp)
+                            .focusRequester(buttonFocusRequester)
+                            .onFocusChanged { isButtonFocused = it.isFocused }
+                            .then(
+                                if (isButtonFocused)
+                                    Modifier.border(
+                                        width = 4.dp,
+                                        color = Color.White,
+                                        shape = RoundedCornerShape(24.dp)
+                                    )
+                                else Modifier
+                            )
                     ) {
-                        Text(
-                            "Save",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                        Button(
+                            onClick = {
+                                if (url.isNotBlank()) {
+                                    onSubmit?.invoke(
+                                        url,
+                                        selectedResolution,
+                                        selectedAppId,
+                                        if (selectedResolution == "720p") 720 else 1080
+                                    )
+                                } else {
+                                    isError = true
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            shape = RoundedCornerShape(24.dp),
+                            enabled = url.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (url.isNotBlank()) Color(0xFFFFA000) else Color.Gray,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(
+                                "Save",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun LoaderScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.85f)),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            color = Color(0xFFFFA000),
+            strokeWidth = 6.dp
+        )
     }
 }

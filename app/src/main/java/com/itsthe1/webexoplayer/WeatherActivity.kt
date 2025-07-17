@@ -53,6 +53,7 @@ fun formatDate(dateString: String): Pair<String, String> {
 
 @Composable
 fun WeatherCard(forecast: WeatherForecast) {
+    val showDayOfWeek = forecast.dayOfWeek != "Unknown" && forecast.dayOfWeek.isNotBlank()
     Card(
         modifier = Modifier
             .width(175.dp)
@@ -68,14 +69,18 @@ fun WeatherCard(forecast: WeatherForecast) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                forecast.dayOfWeek,
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (showDayOfWeek) {
+                Text(
+                    forecast.dayOfWeek,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Spacer(Modifier.height(28.dp)) // keep layout consistent
+            }
             Text(
                 forecast.date,
                 color = Color.White,
@@ -114,11 +119,12 @@ fun WeatherPage(forecasts: List<WeatherForecast>, route_key: String) {
 
     var accuweatherForecasts by remember { mutableStateOf<List<WeatherForecast>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
+    val city = DeviceManager.getHotelCity(context).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             val apiKey = "GUmV0E5oB1FHtp238rxZ33HHyOmUKkK7"
-            val city = "Riyadh"
+            val city = DeviceManager.getHotelCity(context)
             try {
                 val locationResponse = withContext(Dispatchers.IO) {
                     AccuWeatherRetrofitClient.instance.getLocationKey(apiKey, city).execute()
@@ -163,6 +169,13 @@ fun WeatherPage(forecasts: List<WeatherForecast>, route_key: String) {
             TopAppBarCustom()
             Spacer(Modifier.height(16.dp))
             Text(
+                city,
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
                 "Forecast by AccuWeather",
                 color = Color.White,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -193,7 +206,7 @@ fun WeatherPage(forecasts: List<WeatherForecast>, route_key: String) {
 
 class WeatherActivity : ComponentActivity() {
     private val accuweatherApiKey = "GUmV0E5oB1FHtp238rxZ33HHyOmUKkK7"
-    private val defaultCity = "Riyadh"
+    // Removed: private val defaultCity = "Riyadh"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -203,13 +216,15 @@ class WeatherActivity : ComponentActivity() {
                 var forecasts by remember { mutableStateOf<List<WeatherForecast>>(emptyList()) }
                 var loading by remember { mutableStateOf(true) }
                 var error by remember { mutableStateOf<String?>(null) }
+                val context = LocalContext.current
 
                 LaunchedEffect(Unit) {
                     loading = true
                     error = null
                     try {
+                        val city = DeviceManager.getHotelCity(context)
                         val locationResponse = withContext(Dispatchers.IO) {
-                            AccuWeatherRetrofitClient.instance.getLocationKey(accuweatherApiKey, defaultCity).awaitResponse()
+                            AccuWeatherRetrofitClient.instance.getLocationKey(accuweatherApiKey, city).awaitResponse()
                         }
                         val locationKey = locationResponse.body()?.firstOrNull()?.Key
                         if (locationKey != null) {

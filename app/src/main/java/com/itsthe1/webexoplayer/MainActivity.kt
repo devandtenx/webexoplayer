@@ -220,6 +220,21 @@ class MainActivity : ComponentActivity() {
                                             intent.putExtra("route_key", routeKey)
                                             startActivity(intent)
                                         }
+                                        "KEY_DINING_ALL_DAY"->{
+                                            val intent = Intent(this@MainActivity, RestaurantsActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_SPECIAL_OFFERS"->{
+                                            val intent = Intent(this@MainActivity, SpecialOffersActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
+                                        "KEY_FACILITIES"->{
+                                            val intent = Intent(this@MainActivity, FacilitiesActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
                                         else -> {
                                             val context = this@MainActivity
                                             val routes = DeviceManager.getRoutesByParentKey(context, "KEY_HOME")

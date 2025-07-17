@@ -88,11 +88,12 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // VLC
-    implementation("org.videolan.android:libvlc-all:3.6.0")
-
-    // Media3
-    implementation("androidx.media3:media3-ui:1.2.1")
+    // DKVideoPlayer (latest, recommended)
+    implementation("xyz.doikki.android.dkplayer:dkplayer-java:3.3.7")
+    implementation("xyz.doikki.android.dkplayer:dkplayer-ui:3.3.7")
+    implementation("xyz.doikki.android.dkplayer:player-ijk:3.3.7")
+    // Optional: Video caching and preloading
+    implementation("xyz.doikki.android.dkplayer:videocache:3.3.7")
 
     // Location
     implementation("com.google.android.gms:play-services-location:21.0.1")

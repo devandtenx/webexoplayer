@@ -215,6 +215,11 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
+                                        "KEY_ATTRACTIONS"->{
+                                            val intent = Intent(this@MainActivity, AttractionsActivity::class.java)
+                                            intent.putExtra("route_key", routeKey)
+                                            startActivity(intent)
+                                        }
                                         else -> {
                                             val context = this@MainActivity
                                             val routes = DeviceManager.getRoutesByParentKey(context, "KEY_HOME")

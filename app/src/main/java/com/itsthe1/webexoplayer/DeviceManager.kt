@@ -60,6 +60,7 @@ object DeviceManager {
     private const val KEY_HOTEL_INFO_SOCIAL = "hotel_info_social"
     private const val KEY_ALL_ROUTES = "all_routes"
     private const val KEY_ALL_PROMOTIONS = "all_promotions"
+    private const val KEY_ALL_ATTRACTIONS = "all_attractions"
     
     // Server configuration keys
     private const val KEY_SERVER_URL = "server_url"
@@ -147,6 +148,7 @@ object DeviceManager {
         saveHotelInfo(context, deviceInfo?.hotel)
         saveAllRoutes(context, deviceInfo?.routes ?: emptyList())
         saveAllPromotions(context, deviceInfo?.promotions ?: emptyList())
+        saveAllAttractions(context, deviceInfo?.attractions ?: emptyList())
     }
 
     fun getDeviceInfo(context: Context): com.itsthe1.webexoplayer.api.DeviceInfo {
@@ -172,7 +174,8 @@ object DeviceManager {
             channel = getAllChannels(context),
             hotel = getHotelInfo(context),
             routes = getAllRoutes(context),
-            promotions = getAllPromotions(context)
+            promotions = getAllPromotions(context),
+            attractions = getAllAttractions(context)
         )
     }
 
@@ -424,6 +427,32 @@ object DeviceManager {
                 val gson = Gson()
                 val type = object : TypeToken<List<com.itsthe1.webexoplayer.api.PromotionInfo>>() {}.type
                 gson.fromJson(promotionsJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    // Save all attractions to SharedPreferences
+    fun saveAllAttractions(context: Context, attractions: List<com.itsthe1.webexoplayer.api.AttractionInfo>) {
+        val editor = getSharedPreferences(context).edit()
+        val gson = Gson()
+        val attractionsJson = gson.toJson(attractions)
+        editor.putString(KEY_ALL_ATTRACTIONS, attractionsJson)
+        editor.apply()
+    }
+
+    // Get all attractions from SharedPreferences
+    fun getAllAttractions(context: Context): List<com.itsthe1.webexoplayer.api.AttractionInfo> {
+        val prefs = getSharedPreferences(context)
+        val attractionsJson = prefs.getString(KEY_ALL_ATTRACTIONS, null)
+        return if (attractionsJson != null) {
+            try {
+                val gson = Gson()
+                val type = object : com.google.gson.reflect.TypeToken<List<com.itsthe1.webexoplayer.api.AttractionInfo>>() {}.type
+                gson.fromJson<List<com.itsthe1.webexoplayer.api.AttractionInfo>>(attractionsJson, type) ?: emptyList()
             } catch (e: Exception) {
                 emptyList()
             }

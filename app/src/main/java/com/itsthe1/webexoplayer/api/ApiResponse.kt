@@ -29,7 +29,10 @@ data class DeviceInfo(
     val hotel: HostelInfo?,
     val routes: List<RouteInfo>?,
     val promotions: List<PromotionInfo>? = null,
-    val attractions: List<AttractionInfo>? = null
+    val attractions: List<AttractionInfo>? = null,
+    val restaurants: List<RestaurantInfo>? = null,
+    val special_offers: List<SpecialOfferInfo>? = null,
+    val facilities: List<FacilityInfo>? = null
 )
 
 data class GuestInfo(
@@ -132,6 +135,68 @@ data class AttractionInfo(
     val attraction_slider: String?, // JSON string or List<List<String>> if you want to parse
     val attraction_intro: String?,
     val attraction_expire_date: String?,
+    val is_bookable: Int?,
+    val display_order: Int?,
+    val translation_of: Int?,
+    val hotel_id: Int?,
+    val language_id: Int?,
+    val deleted: Int?,
+    val deleted_by: String?,
+    val created_on: String?,
+    val created_by: String?,
+    val modified_on: String?,
+    val modified_by: String?
+)
+
+data class RestaurantInfo(
+    val restaurant_id: Int?,
+    val restaurant_name: String?,
+    val restaurant_cover: String?,
+    val restaurant_gallery: String?, // Store as JSON string, or use List<List<String>> if you want to parse
+    val restaurant_intro: String?,
+    val restaurant_desc: String?,
+    val restaurant_open: String?,
+    val restaurant_close: String?,
+    val is_bookable: Int?,
+    val can_order: Int?,
+    val main_kitchen: Int?,
+    val display_order: Int?,
+    val translation_of: Int?,
+    val hotel_id: Int?,
+    val language_id: Int?
+)
+
+data class SpecialOfferInfo(
+    val special_offer_id: Int?,
+    val special_offer_icon: String?,
+    val special_offer_name: String?,
+    val special_offer_subtitle: String?,
+    val special_offer_slogan: String?,
+    val special_offer_slider: String?, // Store as JSON string, or use List<List<String>> if you want to parse
+    val special_offer_intro: String?,
+    val special_offer_expire_date: String?,
+    val is_bookable: Int?,
+    val display_order: Int?,
+    val translation_of: Int?,
+    val hotel_id: Int?,
+    val language_id: Int?,
+    val deleted: Int?,
+    val deleted_by: String?,
+    val created_on: String?,
+    val created_by: String?,
+    val modified_on: String?,
+    val modified_by: String?
+)
+
+data class FacilityInfo(
+    val facility_id: Int?,
+    val facility_icon: String?,
+    val facility_name: String?,
+    val facility_subtitle: String?,
+    val facility_slogan: String?,
+    val facility_slider: String?, // Store as JSON string, or use List<List<String>> if you want to parse
+    val facility_intro: String?,
+    val facility_expire_date: String?,
     val is_bookable: Int?,
     val display_order: Int?,
     val translation_of: Int?,

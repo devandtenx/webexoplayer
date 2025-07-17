@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.itsthe1.webexoplayer.api.DeviceInfo
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.util.Locale
 
 object DeviceManager {
     private const val PREFS_NAME = "WebExoPlayerPrefs"
@@ -61,6 +62,9 @@ object DeviceManager {
     private const val KEY_ALL_ROUTES = "all_routes"
     private const val KEY_ALL_PROMOTIONS = "all_promotions"
     private const val KEY_ALL_ATTRACTIONS = "all_attractions"
+    private const val KEY_ALL_RESTAURANTS = "all_restaurants"
+    private const val KEY_ALL_SPECIAL_OFFERS = "all_special_offers"
+    private const val KEY_ALL_FACILITIES = "all_facilities"
     
     // Server configuration keys
     private const val KEY_SERVER_URL = "server_url"
@@ -149,6 +153,9 @@ object DeviceManager {
         saveAllRoutes(context, deviceInfo?.routes ?: emptyList())
         saveAllPromotions(context, deviceInfo?.promotions ?: emptyList())
         saveAllAttractions(context, deviceInfo?.attractions ?: emptyList())
+        saveAllRestaurants(context, deviceInfo?.restaurants ?: emptyList())
+        saveAllSpecialOffers(context, deviceInfo?.special_offers ?: emptyList())
+        saveAllFacilities(context, deviceInfo?.facilities ?: emptyList())
     }
 
     fun getDeviceInfo(context: Context): com.itsthe1.webexoplayer.api.DeviceInfo {
@@ -175,7 +182,10 @@ object DeviceManager {
             hotel = getHotelInfo(context),
             routes = getAllRoutes(context),
             promotions = getAllPromotions(context),
-            attractions = getAllAttractions(context)
+            attractions = getAllAttractions(context),
+            restaurants = getAllRestaurants(context),
+            special_offers = getAllSpecialOffers(context),
+            facilities = getAllFacilities(context)
         )
     }
 
@@ -461,6 +471,84 @@ object DeviceManager {
         }
     }
 
+    // Save all restaurants to SharedPreferences
+    fun saveAllRestaurants(context: Context, restaurants: List<com.itsthe1.webexoplayer.api.RestaurantInfo>) {
+        val editor = getSharedPreferences(context).edit()
+        val gson = Gson()
+        val restaurantsJson = gson.toJson(restaurants)
+        editor.putString(KEY_ALL_RESTAURANTS, restaurantsJson)
+        editor.apply()
+    }
+
+    // Get all restaurants from SharedPreferences
+    fun getAllRestaurants(context: Context): List<com.itsthe1.webexoplayer.api.RestaurantInfo> {
+        val prefs = getSharedPreferences(context)
+        val restaurantsJson = prefs.getString(KEY_ALL_RESTAURANTS, null)
+        return if (restaurantsJson != null) {
+            try {
+                val gson = Gson()
+                val type = object : com.google.gson.reflect.TypeToken<List<com.itsthe1.webexoplayer.api.RestaurantInfo>>() {}.type
+                gson.fromJson<List<com.itsthe1.webexoplayer.api.RestaurantInfo>>(restaurantsJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    // Save all special offers to SharedPreferences
+    fun saveAllSpecialOffers(context: Context, specialOffers: List<com.itsthe1.webexoplayer.api.SpecialOfferInfo>) {
+        val editor = getSharedPreferences(context).edit()
+        val gson = Gson()
+        val specialOffersJson = gson.toJson(specialOffers)
+        editor.putString(KEY_ALL_SPECIAL_OFFERS, specialOffersJson)
+        editor.apply()
+    }
+
+    // Get all special offers from SharedPreferences
+    fun getAllSpecialOffers(context: Context): List<com.itsthe1.webexoplayer.api.SpecialOfferInfo> {
+        val prefs = getSharedPreferences(context)
+        val specialOffersJson = prefs.getString(KEY_ALL_SPECIAL_OFFERS, null)
+        return if (specialOffersJson != null) {
+            try {
+                val gson = Gson()
+                val type = object : com.google.gson.reflect.TypeToken<List<com.itsthe1.webexoplayer.api.SpecialOfferInfo>>() {}.type
+                gson.fromJson<List<com.itsthe1.webexoplayer.api.SpecialOfferInfo>>(specialOffersJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    // Save all facilities to SharedPreferences
+    fun saveAllFacilities(context: Context, facilities: List<com.itsthe1.webexoplayer.api.FacilityInfo>) {
+        val editor = getSharedPreferences(context).edit()
+        val gson = Gson()
+        val facilitiesJson = gson.toJson(facilities)
+        editor.putString(KEY_ALL_FACILITIES, facilitiesJson)
+        editor.apply()
+    }
+
+    // Get all facilities from SharedPreferences
+    fun getAllFacilities(context: Context): List<com.itsthe1.webexoplayer.api.FacilityInfo> {
+        val prefs = getSharedPreferences(context)
+        val facilitiesJson = prefs.getString(KEY_ALL_FACILITIES, null)
+        return if (facilitiesJson != null) {
+            try {
+                val gson = Gson()
+                val type = object : com.google.gson.reflect.TypeToken<List<com.itsthe1.webexoplayer.api.FacilityInfo>>() {}.type
+                gson.fromJson<List<com.itsthe1.webexoplayer.api.FacilityInfo>>(facilitiesJson, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
+
     // Clear all data from SharedPreferences
     fun clearAll(context: Context) {
         getSharedPreferences(context).edit().clear().apply()
@@ -525,5 +613,12 @@ object DeviceManager {
         } catch (e: Exception) {
             return null
         }
+    }
+
+    // Helper to get city from hotel address
+    fun getHotelCity(context: Context): String {
+        val hotelInfo = getHotelInfo(context)
+        val hotelAddress = hotelInfo?.hotel_address
+        return hotelAddress?.split(",")?.getOrNull(1)?.trim()?.lowercase(Locale.getDefault()) ?: "riyadh"
     }
 } 

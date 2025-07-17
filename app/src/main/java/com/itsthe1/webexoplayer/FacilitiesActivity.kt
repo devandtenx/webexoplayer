@@ -5,48 +5,52 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.annotation.RequiresApi
-import androidx.compose.foundation.*
-import androidx.compose.foundation.content.MediaType.Companion.HtmlText
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.platform.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.ui.text.style.TextAlign
 
-class AttractionsActivity : ComponentActivity() {
+class FacilitiesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val route_key = intent.getStringExtra("route_key") ?: "KEY_ATTRACTIONS"
+        val route_key = intent.getStringExtra("route_key") ?: "KEY_FACILITIES"
         setContent {
-            AttractionsScreen(route_key)
+            FacilitiesScreen(route_key)
         }
     }
 }
 
 @Composable
-fun AttractionsScreen(routeKey: String) {
+fun FacilitiesScreen(routeKey: String) {
     val context = LocalContext.current
     var selectedIndex by remember { mutableStateOf(0) }
-    val attractions = DeviceManager.getAllAttractions(context)
-    val locationNames = attractions.map { it.attraction_name ?: "Unknown" }
-    val attractionSlogan = attractions.getOrNull(selectedIndex)?.attraction_slogan ?: ""
-    val sliderRaw = attractions.getOrNull(selectedIndex)?.attraction_slider ?: "[]"
-    val sliderItems = run {
+    val facilities = DeviceManager.getAllFacilities(context)
+    val facilityNames = facilities.map { it.facility_name ?: "Unknown" }
+    val facilitySlogan = facilities.getOrNull(selectedIndex)?.facility_slogan ?: ""
+    val sliderRaw = facilities.getOrNull(selectedIndex)?.facility_slider ?: "[]"
+    val sliderItems = remember(sliderRaw) {
         try {
             val gson = com.google.gson.Gson()
             val type = object : com.google.gson.reflect.TypeToken<List<List<String>>>() {}.type
@@ -54,25 +58,15 @@ fun AttractionsScreen(routeKey: String) {
         } catch (e: Exception) {
             emptyList()
         }
-    }.filter { it.getOrNull(1) == "1" }
+    }.filter { it.getOrNull(1) != "0" }
     val bgImage = remember { DeviceManager.getRouteBackgroundImageByKey(context, routeKey) }
     val bgImageUrl = "http://${AppGlobals.webViewURL}/admin-portal/assets/uploads/Backgrounds/$bgImage"
 
     val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     val listState = rememberLazyListState()
-
-    // Auto-scroll to selected item when selectedIndex changes
-    LaunchedEffect(selectedIndex) {
-        listState.animateScrollToItem(selectedIndex)
-    }
-
+    LaunchedEffect(selectedIndex) { listState.animateScrollToItem(selectedIndex) }
     var currentImageIndex by remember(selectedIndex) { mutableStateOf(0) }
-
     LaunchedEffect(sliderItems, currentImageIndex) {
         if (sliderItems.isNotEmpty()) {
             kotlinx.coroutines.delay(2500)
@@ -80,25 +74,26 @@ fun AttractionsScreen(routeKey: String) {
         }
     }
 
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .onKeyEvent { event ->
-            if (event.type == KeyEventType.KeyDown) {
-                when (event.key) {
-                    Key.DirectionUp -> {
-                        if (selectedIndex > 0) selectedIndex--
-                        true
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.DirectionUp -> {
+                            if (selectedIndex > 0) selectedIndex--
+                            true
+                        }
+                        Key.DirectionDown -> {
+                            if (selectedIndex < facilityNames.lastIndex) selectedIndex++
+                            true
+                        }
+                        else -> false
                     }
-                    Key.DirectionDown -> {
-                        if (selectedIndex < locationNames.lastIndex) selectedIndex++
-                        true
-                    }
-                    else -> false
-                }
-            } else false
-        }
-        .focusRequester(focusRequester)
-        .focusable()
+                } else false
+            }
+            .focusRequester(focusRequester)
+            .focusable()
     ) {
         if (bgImage != null) {
             AsyncImage(
@@ -150,14 +145,14 @@ fun AttractionsScreen(routeKey: String) {
                             Text("↑", color = Color.White, fontSize = 28.sp)
                         }
                         Spacer(Modifier.height(12.dp))
-                        // Location buttons
+                        // Facility buttons
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            itemsIndexed(locationNames) { idx, name ->
+                            itemsIndexed(facilityNames) { idx, name ->
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -190,9 +185,9 @@ fun AttractionsScreen(routeKey: String) {
                                 .fillMaxWidth()
                                 .height(48.dp)
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(if (selectedIndex == locationNames.lastIndex) Color(0x55222222) else Color(0xCC222222))
-                                .clickable(enabled = selectedIndex < locationNames.lastIndex) {
-                                    if (selectedIndex < locationNames.lastIndex) selectedIndex++
+                                .background(if (selectedIndex == facilityNames.lastIndex) Color(0x55222222) else Color(0xCC222222))
+                                .clickable(enabled = selectedIndex < facilityNames.lastIndex) {
+                                    if (selectedIndex < facilityNames.lastIndex) selectedIndex++
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -200,7 +195,6 @@ fun AttractionsScreen(routeKey: String) {
                         }
                     }
                 }
-
                 // CENTER PANEL
                 Box(
                     modifier = Modifier
@@ -220,11 +214,11 @@ fun AttractionsScreen(routeKey: String) {
                     ) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                             HtmlText(
-                                html = "<span style=\"font-size:28px;\">${attractionSlogan}</span>"
+                                html = "<span style=\"font-size:28px;\">${facilitySlogan}</span>"
                             )
                         } else {
                             Text(
-                                text = attractionSlogan,
+                                text = facilitySlogan,
                                 color = Color.White,
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold
@@ -232,7 +226,6 @@ fun AttractionsScreen(routeKey: String) {
                         }
                     }
                 }
-
                 // RIGHT PANEL
                 Box(
                     modifier = Modifier
@@ -246,7 +239,7 @@ fun AttractionsScreen(routeKey: String) {
                     if (sliderItems.isNotEmpty()) {
                         val imageName = sliderItems.getOrNull(currentImageIndex)?.getOrNull(0) ?: ""
                         val imageUrl = if (imageName.isNotEmpty()) {
-                            "http://192.168.56.1/admin-portal/assets/uploads/Attractions/Sliders/$imageName"
+                            "http://192.168.56.1/admin-portal/assets/uploads/Facilities/Sliders/$imageName"
                         } else ""
                         Box(
                             modifier = Modifier

@@ -49,6 +49,9 @@
         <activity android:name="com.itsthe1.webexoplayer.PrayerTimesActivity" />
         <activity android:name="com.itsthe1.webexoplayer.WeatherActivity" />
         <activity android:name="com.itsthe1.webexoplayer.AttractionsActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.RestaurantsActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.SpecialOffersActivity" />
+        <activity android:name="com.itsthe1.webexoplayer.FacilitiesActivity" />
 
     </application>
 
